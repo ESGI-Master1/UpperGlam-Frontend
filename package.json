@@ -1,0 +1,50 @@
+{
+  "name": "upperglam-mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "type-check": "tsc --noEmit",
+    "workflow:check": "npm run lint && npm run type-check",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@react-native-async-storage/async-storage": "^3.0.2",
+    "@react-navigation/bottom-tabs": "^7.15.6",
+    "@react-navigation/native": "^7.1.34",
+    "@react-navigation/stack": "^7.8.6",
+    "axios": "^1.13.6",
+    "expo": "~55.0.8",
+    "expo-application": "~55.0.10",
+    "expo-device": "~55.0.10",
+    "expo-status-bar": "~55.0.4",
+    "posthog-react-native": "^4.39.1",
+    "react": "19.2.0",
+    "react-hook-form": "^7.71.2",
+    "react-native": "0.83.2",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "~19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "babel-plugin-module-resolver": "^5.0.3",
+    "babel-preset-expo": "~55.0.12",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "posthog": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp-eu.posthog.com/mcp"
+      ]
+    },
+    "linear": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/mcp"
+      ]
+    }
+  }
+}
