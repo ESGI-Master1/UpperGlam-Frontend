@@ -58,12 +58,7 @@ export const WelcomeScreen: React.FC = () => {
 
       <View style={styles.actions}>
         <Button title="Se connecter" onPress={goToLogin} fullWidth />
-        <Button
-          title="Se pré-inscrire"
-          onPress={goToPreRegistration}
-          variant="outline"
-          fullWidth
-        />
+        <Button title="Se pré-inscrire" onPress={goToPreRegistration} variant="outline" fullWidth />
       </View>
     </Container>
   );

@@ -17,6 +17,8 @@ jobs:
     name: Dependency Audit (prod, high+)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      HUSKY: 0
 
     steps:
       - name: Checkout

@@ -10,7 +10,12 @@ import {
 } from '@/services/bookingService';
 import { pushRecentInstituteId } from '@/services/localShortcutsService';
 import { getProviderById } from '@/services/providerService';
-import { Booking, BookingDraft, CreateBookingDraftInput, UpdateBookingInput } from '@/types/booking';
+import {
+  Booking,
+  BookingDraft,
+  CreateBookingDraftInput,
+  UpdateBookingInput,
+} from '@/types/booking';
 import { PaymentMethod } from '@/types/payment';
 import { useAuth } from '../auth/AuthContext';
 
@@ -97,22 +102,25 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     void refreshBookings();
   }, [isAuthenticated, refreshBookings]);
 
-  const createDraft = useCallback(async (input: CreateBookingDraftInput): Promise<BookingDraft> => {
-    setIsSubmitting(true);
-    try {
-      const draft = await createBookingDraft(input);
-      setDrafts((current) => [draft, ...current]);
-      await resolveProviderNames([draft.providerId]);
-      trackEvent(ANALYTICS_EVENTS.BOOKING_DRAFT_CREATED, {
-        screen_name: 'Booking',
-        step: 1,
-        status: 'success',
-      });
-      return draft;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [resolveProviderNames]);
+  const createDraft = useCallback(
+    async (input: CreateBookingDraftInput): Promise<BookingDraft> => {
+      setIsSubmitting(true);
+      try {
+        const draft = await createBookingDraft(input);
+        setDrafts((current) => [draft, ...current]);
+        await resolveProviderNames([draft.providerId]);
+        trackEvent(ANALYTICS_EVENTS.BOOKING_DRAFT_CREATED, {
+          screen_name: 'Booking',
+          step: 1,
+          status: 'success',
+        });
+        return draft;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [resolveProviderNames]
+  );
 
   const getDraftById = useCallback(
     (draftId: string): BookingDraft | undefined => {
@@ -147,7 +155,8 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     ): Promise<Booking> => {
       setIsSubmitting(true);
       try {
-        const draft = drafts.find((item) => item.id === draftId) ?? (await getBookingDraftById(draftId));
+        const draft =
+          drafts.find((item) => item.id === draftId) ?? (await getBookingDraftById(draftId));
         const booking = await checkoutBookingDraft(draft.id, {
           method: paymentMethod,
           platformPayToken,
@@ -174,34 +183,37 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     [drafts, resolveProviderNames]
   );
 
-  const updateBooking = useCallback(async (input: UpdateBookingInput): Promise<Booking> => {
-    setIsSubmitting(true);
-    try {
-      const updatedBooking = await updateBookingRequest(input);
-      setBookings((current) => {
-        return current.map((booking) => {
-          if (booking.id !== input.bookingId) {
-            return booking;
-          }
-          return updatedBooking;
+  const updateBooking = useCallback(
+    async (input: UpdateBookingInput): Promise<Booking> => {
+      setIsSubmitting(true);
+      try {
+        const updatedBooking = await updateBookingRequest(input);
+        setBookings((current) => {
+          return current.map((booking) => {
+            if (booking.id !== input.bookingId) {
+              return booking;
+            }
+            return updatedBooking;
+          });
         });
-      });
 
-      await resolveProviderNames([updatedBooking.providerId]);
-      if (updatedBooking.appointmentMode === 'institute') {
-        await pushRecentInstituteId(updatedBooking.providerId);
+        await resolveProviderNames([updatedBooking.providerId]);
+        if (updatedBooking.appointmentMode === 'institute') {
+          await pushRecentInstituteId(updatedBooking.providerId);
+        }
+
+        trackEvent(ANALYTICS_EVENTS.BOOKING_UPDATED, {
+          screen_name: 'ManageBooking',
+          status: 'success',
+        });
+
+        return updatedBooking;
+      } finally {
+        setIsSubmitting(false);
       }
-
-      trackEvent(ANALYTICS_EVENTS.BOOKING_UPDATED, {
-        screen_name: 'ManageBooking',
-        status: 'success',
-      });
-
-      return updatedBooking;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [resolveProviderNames]);
+    },
+    [resolveProviderNames]
+  );
 
   const cancelBooking = useCallback(async (bookingId: string): Promise<void> => {
     setIsSubmitting(true);

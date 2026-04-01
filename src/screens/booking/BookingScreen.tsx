@@ -82,7 +82,9 @@ export const BookingScreen: React.FC = () => {
             from.toISOString(),
             to.toISOString()
           );
-          setProviderSlots(availabilitySlots.length > 0 ? availabilitySlots : providerResult.nextSlots);
+          setProviderSlots(
+            availabilitySlots.length > 0 ? availabilitySlots : providerResult.nextSlots
+          );
         } catch {
           setProviderSlots(providerResult.nextSlots);
         }

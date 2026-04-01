@@ -4,7 +4,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import { getMeRequest, updateMyPreferencesRequest } from '@/api/users';
-import { getLastSearchParams, getRecentInstituteIds, LastSearchParams } from '@/services/localShortcutsService';
+import {
+  getLastSearchParams,
+  getRecentInstituteIds,
+  LastSearchParams,
+} from '@/services/localShortcutsService';
 import { getProviderById } from '@/services/providerService';
 import { useAuth, useBookings } from '@/store';
 import { theme } from '@/theme';
@@ -215,7 +219,12 @@ export const ProfileScreen: React.FC = () => {
           <Text variant="heading" size="lg" weight="bold">
             Raccourcis
           </Text>
-          <Button title="Voir mes rendez-vous" variant="secondary" onPress={openBookings} fullWidth />
+          <Button
+            title="Voir mes rendez-vous"
+            variant="secondary"
+            onPress={openBookings}
+            fullWidth
+          />
           <Button
             title="Ouvrir la recherche"
             variant="tertiary"
@@ -281,11 +290,7 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.activityList}>
               {recentInstitutes.slice(0, 3).map((instituteName) => (
                 <View key={instituteName} style={styles.activityItem}>
-                  <Icon
-                    name="storefront-outline"
-                    size={16}
-                    color={theme.colors.accentChampagne}
-                  />
+                  <Icon name="storefront-outline" size={16} color={theme.colors.accentChampagne} />
                   <Text size="sm" color="secondary" style={styles.activityText}>
                     {instituteName}
                   </Text>

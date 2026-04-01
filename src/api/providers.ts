@@ -102,9 +102,7 @@ export const searchProvidersRequest = async (
   };
 };
 
-export const getProviderByIdRequest = async (
-  providerId: number | string
-): Promise<ProviderDto> => {
+export const getProviderByIdRequest = async (providerId: number | string): Promise<ProviderDto> => {
   const response = await apiClient.get<ApiSuccessResponse<ProviderDto>>(providerPath(providerId));
   return response.data;
 };

@@ -325,8 +325,18 @@ export const ManageBookingScreen: React.FC = () => {
       ) : null}
 
       <View style={styles.actions}>
-        <Button title="Enregistrer les modifications" onPress={submitUpdate} loading={isSubmitting} fullWidth />
-        <Button title="Annuler le rendez-vous" variant="outline" onPress={requestCancel} fullWidth />
+        <Button
+          title="Enregistrer les modifications"
+          onPress={submitUpdate}
+          loading={isSubmitting}
+          fullWidth
+        />
+        <Button
+          title="Annuler le rendez-vous"
+          variant="outline"
+          onPress={requestCancel}
+          fullWidth
+        />
       </View>
     </KeyboardScreen>
   );

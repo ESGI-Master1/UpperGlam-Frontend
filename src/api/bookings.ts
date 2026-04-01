@@ -123,8 +123,8 @@ export const updateBookingRequest = async (
 export const cancelBookingRequest = async (
   bookingId: number | string
 ): Promise<{ id: number | string; status: 'cancelled' }> => {
-  const response = await apiClient.post<ApiSuccessResponse<{ id: number | string; status: 'cancelled' }>>(
-    `${bookingPath(bookingId)}/cancel`
-  );
+  const response = await apiClient.post<
+    ApiSuccessResponse<{ id: number | string; status: 'cancelled' }>
+  >(`${bookingPath(bookingId)}/cancel`);
   return response.data;
 };
