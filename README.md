@@ -105,6 +105,15 @@ npm run format
 npm run type-check
 ```
 
+### CI & Branch Protection
+
+- `CI` (`.github/workflows/ci.yml`): lint + type-check + prettier check
+- `PR Conventions` (`.github/workflows/pr-conventions.yml`): semantic PR title + branch/commit naming conventions
+- `Dependency Audit` (`.github/workflows/dependency-audit.yml`): `npm audit` sur deps de prod (PR lockfile + weekly)
+
+To apply protection on `main`, run the workflow `Apply Main Branch Protection` after adding
+`ADMIN_GITHUB_TOKEN` (admin PAT) in repository secrets.
+
 ### Architecture Guidelines
 
 - ✅ **DO**: Keep components under 200 lines
