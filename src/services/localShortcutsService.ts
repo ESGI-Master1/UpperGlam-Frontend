@@ -70,9 +70,7 @@ const readLocalShortcuts = async (): Promise<ShortcutsState> => {
         ? {
             query: typeof lastSearchParsed.query === 'string' ? lastSearchParsed.query : undefined,
             location:
-              typeof lastSearchParsed.location === 'string'
-                ? lastSearchParsed.location
-                : undefined,
+              typeof lastSearchParsed.location === 'string' ? lastSearchParsed.location : undefined,
             date: typeof lastSearchParsed.date === 'string' ? lastSearchParsed.date : undefined,
             tags: normalizeTags(lastSearchParsed.tags),
             updatedAt:
@@ -186,9 +184,7 @@ export const getLastSearchParams = async (): Promise<LastSearchParams | null> =>
   return state.lastSearchParams;
 };
 
-export const saveLastSearchParams = async (
-  input: SaveLastSearchParamsInput
-): Promise<void> => {
+export const saveLastSearchParams = async (input: SaveLastSearchParamsInput): Promise<void> => {
   const query = input.query?.trim();
   const location = input.location?.trim();
   const date = input.date?.trim();

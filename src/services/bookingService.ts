@@ -8,7 +8,12 @@ import {
   listMyBookingsRequest,
   updateBookingRequest,
 } from '@/api/bookings';
-import { Booking, BookingDraft, CreateBookingDraftInput, UpdateBookingInput } from '@/types/booking';
+import {
+  Booking,
+  BookingDraft,
+  CreateBookingDraftInput,
+  UpdateBookingInput,
+} from '@/types/booking';
 import { PaymentMethod } from '@/types/payment';
 
 interface CheckoutBookingDraftInput {

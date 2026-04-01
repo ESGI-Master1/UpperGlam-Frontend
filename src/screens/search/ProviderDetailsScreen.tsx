@@ -208,12 +208,12 @@ export const ProviderDetailsScreen: React.FC = () => {
                       {review.author}
                     </Text>
                     <View style={styles.reviewMeta}>
-                    <Icon name="star" size={12} color={theme.colors.accentChampagne} />
-                    <Text size="xs" color="secondary">
-                      {review.rating}
-                    </Text>
-                    <Text size="xs" color="secondary">
-                      {formatReviewAge(review.createdAt)}
+                      <Icon name="star" size={12} color={theme.colors.accentChampagne} />
+                      <Text size="xs" color="secondary">
+                        {review.rating}
+                      </Text>
+                      <Text size="xs" color="secondary">
+                        {formatReviewAge(review.createdAt)}
                       </Text>
                     </View>
                   </View>
