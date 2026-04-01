@@ -12,7 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "type-check": "tsc --noEmit",
     "workflow:check": "npm run lint && npm run type-check",
-    "prepare": "husky"
+    "prepare": "node .husky/install.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
