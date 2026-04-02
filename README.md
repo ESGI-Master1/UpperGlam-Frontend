@@ -4,7 +4,7 @@ React Native mobile application for Upper Glam, built with Expo and TypeScript.
 
 ## Tech Stack
 
-- **React Native** with Expo (~55.0.8)
+- **React Native** with Expo (~55.0.9)
 - **TypeScript** (strict mode)
 - **React Navigation** (Stack + Bottom Tabs)
 - **Axios** for API calls
@@ -55,7 +55,9 @@ src/
 
 - Node.js (v18+)
 - npm or yarn
-- Expo Go app (for mobile testing)
+- Android Studio (SDK + Android Emulator)
+- JDK 17
+- Expo account (for cloud APK builds with EAS)
 
 ### Installation
 
@@ -71,14 +73,17 @@ Copy `.env.example` to `.env` and configure:
 cp .env.example .env
 ```
 
-### Run the App
+### Run on Android (without Expo Go)
 
 ```bash
-# Start Expo dev server
-npm start
+# Check Android toolchain (Java/SDK/AVD)
+npm run android:check
 
-# Run on Android
+# Build + install native app on emulator (no Expo Go)
 npm run android
+
+# Next launches (after app is already installed)
+npm run android:dev-client
 
 # Run on iOS
 npm run ios
@@ -86,6 +91,20 @@ npm run ios
 # Run on web
 npm run web
 ```
+
+### Build APK for a tester
+
+```bash
+# One-time login
+npx eas-cli login
+
+# Build installable APK (internal distribution)
+npm run android:apk
+```
+
+At the end of the build, EAS provides a download URL for the `.apk` that you can send directly to testers.
+
+If `java` or `adb` is not detected right after installing Android/JDK tools on Windows, close and reopen your terminal once.
 
 ## Development
 
