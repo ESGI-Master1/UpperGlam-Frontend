@@ -5,13 +5,15 @@ import { apiClient } from './client';
 export interface CreatePaymentIntentPayload {
   draftId: number | string;
   method: PaymentMethod;
-  platformPayToken: string;
 }
 
 export interface PaymentIntentResultDto {
-  status: 'succeeded' | 'failed';
-  transactionId: string;
-  providerReference?: string;
+  provider: 'stripe';
+  paymentIntentId: string;
+  clientSecret: string;
+  status: string;
+  amountCents: number;
+  currency: string;
 }
 
 export const createPaymentIntentRequest = async (

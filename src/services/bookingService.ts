@@ -18,7 +18,7 @@ import { PaymentMethod } from '@/types/payment';
 
 interface CheckoutBookingDraftInput {
   method: PaymentMethod;
-  platformPayToken: string;
+  paymentIntentId: string;
 }
 
 const centsToEuros = (amountCents: number): number => amountCents / 100;

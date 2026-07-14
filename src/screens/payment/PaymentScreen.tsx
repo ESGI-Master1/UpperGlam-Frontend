@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { StyleSheet, View } from 'react-native';
+import { PlatformPay, usePlatformPay } from '@stripe/stripe-react-native';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
-  createPlatformPayToken,
+  createStripePaymentIntent,
   getAvailableWalletMethods,
-  isWalletPaymentSupported,
-  processPayment,
+  isStripePaymentConfigured,
 } from '@/services/paymentService';
+import { env } from '@/app/config/env';
 import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
@@ -33,8 +34,10 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
 export const PaymentScreen: React.FC = () => {
   const route = useRoute<PaymentRoute>();
   const navigation = useNavigation<PaymentNavigation>();
+  const { confirmPlatformPayPayment, isPlatformPaySupported } = usePlatformPay();
   const { getDraftById, finalizeDraft, markDraftAsFailed } = useBookings();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWalletSupported, setIsWalletSupported] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     () => getAvailableWalletMethods()[0] ?? 'apple_pay'
   );
@@ -58,6 +61,28 @@ export const PaymentScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const checkWalletSupport = async (): Promise<void> => {
+      if (!isStripePaymentConfigured()) {
+        setIsWalletSupported(false);
+        return;
+      }
+
+      if (selectedMethod === 'google_pay') {
+        setIsWalletSupported(
+          await isPlatformPaySupported({
+            googlePay: { testEnv: env.stripeGooglePayTestEnv },
+          })
+        );
+        return;
+      }
+
+      setIsWalletSupported(await isPlatformPaySupported());
+    };
+
+    void checkWalletSupport();
+  }, [isPlatformPaySupported, selectedMethod]);
+
+  useEffect(() => {
     if (paymentOptions.length > 0) {
       setSelectedMethod(paymentOptions[0].value);
     }
@@ -69,7 +94,12 @@ export const PaymentScreen: React.FC = () => {
       return;
     }
 
-    if (!isWalletPaymentSupported()) {
+    if (!isStripePaymentConfigured()) {
+      setErrorMessage('Stripe n’est pas configuré sur cette application.');
+      return;
+    }
+
+    if (!isWalletSupported) {
       setErrorMessage('Le paiement wallet n’est pas disponible sur cet appareil.');
       return;
     }
@@ -84,25 +114,57 @@ export const PaymentScreen: React.FC = () => {
     });
 
     try {
-      const platformPayToken = createPlatformPayToken(selectedMethod);
-      const paymentResult = await processPayment({
+      const paymentIntent = await createStripePaymentIntent({
         draftId: draft.id,
         method: selectedMethod,
-        platformPayToken,
       });
 
-      if (paymentResult.status === 'failed') {
+      const { error } =
+        selectedMethod === 'google_pay'
+          ? await confirmPlatformPayPayment(paymentIntent.clientSecret, {
+              googlePay: {
+                testEnv: env.stripeGooglePayTestEnv,
+                merchantName: 'Upper Glam',
+                merchantCountryCode: env.stripeMerchantCountryCode,
+                currencyCode: paymentIntent.currency,
+                billingAddressConfig: {
+                  format: PlatformPay.BillingAddressFormat.Full,
+                  isPhoneNumberRequired: true,
+                  isRequired: true,
+                },
+              },
+            })
+          : await confirmPlatformPayPayment(paymentIntent.clientSecret, {
+              applePay: {
+                merchantCountryCode: env.stripeMerchantCountryCode,
+                currencyCode: paymentIntent.currency,
+                cartItems: [
+                  {
+                    label: 'Prestation beauté',
+                    amount: draft.amount.toFixed(2),
+                    paymentType: PlatformPay.PaymentType.Immediate,
+                  },
+                  {
+                    label: 'Upper Glam',
+                    amount: draft.amount.toFixed(2),
+                    paymentType: PlatformPay.PaymentType.Immediate,
+                  },
+                ],
+              },
+            });
+
+      if (error) {
         markDraftAsFailed(draft.id);
         trackEvent(ANALYTICS_EVENTS.PAYMENT_FAILED, {
           screen_name: 'Payment',
           status: 'error',
-          error_code: paymentResult.errorCode ?? 'wallet_payment_failed',
+          error_code: error.code ?? 'stripe_payment_failed',
         });
-        setErrorMessage('Le paiement a échoué. Réessaie.');
+        setErrorMessage(error.message ?? 'Le paiement a échoué. Réessaie.');
         return;
       }
 
-      await finalizeDraft(draft.id, selectedMethod, platformPayToken);
+      await finalizeDraft(draft.id, selectedMethod, paymentIntent.paymentIntentId);
       trackEvent(ANALYTICS_EVENTS.PAYMENT_COMPLETED, {
         screen_name: 'Payment',
         status: 'success',
@@ -176,7 +238,7 @@ export const PaymentScreen: React.FC = () => {
         title={`Payer avec ${PAYMENT_LABELS[selectedMethod]}`}
         onPress={submitPayment}
         loading={isSubmitting}
-        disabled={!isWalletPaymentSupported()}
+        disabled={!isWalletSupported || !isStripePaymentConfigured()}
         fullWidth
         style={styles.payButton}
       />

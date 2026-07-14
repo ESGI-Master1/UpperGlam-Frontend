@@ -42,7 +42,7 @@ export interface CreateBookingDraftPayload {
 
 export interface CheckoutDraftPayload {
   method: PaymentMethod;
-  platformPayToken: string;
+  paymentIntentId: string;
 }
 
 export interface UpdateBookingPayload {

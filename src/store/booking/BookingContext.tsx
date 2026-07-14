@@ -32,7 +32,7 @@ interface BookingContextValue {
   finalizeDraft: (
     draftId: string,
     paymentMethod: PaymentMethod,
-    platformPayToken: string
+    paymentIntentId: string
   ) => Promise<Booking>;
   updateBooking: (input: UpdateBookingInput) => Promise<Booking>;
   cancelBooking: (bookingId: string) => Promise<void>;
@@ -151,7 +151,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     async (
       draftId: string,
       paymentMethod: PaymentMethod,
-      platformPayToken: string
+      paymentIntentId: string
     ): Promise<Booking> => {
       setIsSubmitting(true);
       try {
@@ -159,7 +159,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
           drafts.find((item) => item.id === draftId) ?? (await getBookingDraftById(draftId));
         const booking = await checkoutBookingDraft(draft.id, {
           method: paymentMethod,
-          platformPayToken,
+          paymentIntentId,
         });
 
         setBookings((current) => [booking, ...current.filter((item) => item.id !== booking.id)]);
