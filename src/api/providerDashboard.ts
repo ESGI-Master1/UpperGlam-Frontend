@@ -5,6 +5,7 @@ import {
   ProviderAvailabilitySchedule,
   ProviderAvailabilitySlot,
   ProviderBooking,
+  ProviderCustomer,
   ProviderDashboard,
   ProviderGalleryItem,
   ProviderProfile,
@@ -261,4 +262,26 @@ export const getProviderRevenueRequest = async (): Promise<ProviderRevenue> => {
   const response =
     await apiClient.get<ApiSuccessResponse<ProviderRevenue>>('/providers/me/revenue');
   return response.data;
+};
+
+export const listProviderCustomersRequest = async (): Promise<ProviderCustomer[]> => {
+  const response =
+    await apiClient.get<ApiSuccessResponse<ProviderCustomer[]>>('/providers/me/customers');
+  return response.data;
+};
+
+export const updateProviderCustomerNoteRequest = async (
+  customerUserId: string,
+  note: string | null
+): Promise<{ customerUserId: string; note: string | null; noteUpdatedAt: string | null }> => {
+  const response = await apiClient.put<
+    ApiSuccessResponse<{ customerUserId: string; note: string | null; noteUpdatedAt: string | null }>
+  >(`/providers/me/customers/${customerUserId}/note`, { note });
+  return response.data;
+};
+
+export const exportProviderCsvRequest = async (
+  type: 'bookings' | 'transactions'
+): Promise<string> => {
+  return apiClient.get<string>('/providers/me/export.csv', { params: { type } });
 };

@@ -123,6 +123,12 @@ export interface ProviderRevenue {
     amountCents: number;
     bookingCount: number;
   };
+  payouts?: {
+    status: string;
+    paidOutCents: number;
+    pendingCents: number;
+    bookingCount: number;
+  };
   transactions: Array<{
     bookingId: string;
     slot: string;
@@ -130,6 +136,18 @@ export interface ProviderRevenue {
     currency: string;
     status: 'paid' | 'cancelled';
   }>;
+}
+
+export interface ProviderCustomer {
+  customerUserId: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  bookingCount: number;
+  lastBookingAt?: string | null;
+  totalAmountCents: number;
+  note?: string | null;
+  noteUpdatedAt?: string | null;
 }
 
 export interface UpdateProviderProfileInput {

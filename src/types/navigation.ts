@@ -19,6 +19,7 @@ export type MainTabParamList = {
 export type ProviderTabParamList = {
   ProviderDashboard: undefined;
   ProviderAgenda: undefined;
+  ProviderOperations: undefined;
   ProviderProfile: undefined;
 };
 
