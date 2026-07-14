@@ -96,6 +96,15 @@ export interface ProviderAvailabilitySchedule {
   closures: ProviderAvailabilityClosure[];
 }
 
+export interface ProviderService {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  priceCents: number;
+  category: string;
+  isActive: boolean;
+}
+
 export interface ProviderRevenue {
   currency: string;
   month: {

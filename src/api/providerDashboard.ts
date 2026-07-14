@@ -8,6 +8,7 @@ import {
   ProviderDashboard,
   ProviderProfile,
   ProviderRevenue,
+  ProviderService,
   UpdateProviderProfileInput,
 } from '@/types/providerDashboard';
 import { apiClient } from './client';
@@ -29,6 +30,14 @@ export interface CreateProviderAvailabilityClosurePayload {
   startsAt: string;
   endsAt: string;
   reason?: string | null;
+}
+
+export interface UpsertProviderServicePayload {
+  name: string;
+  durationMinutes: number;
+  priceCents: number;
+  category: string;
+  isActive?: boolean;
 }
 
 export interface ProviderBookingActionResult {
@@ -174,6 +183,39 @@ export const updateProviderProfileRequest = async (
     payload
   );
   return response.data;
+};
+
+export const listProviderServicesRequest = async (): Promise<ProviderService[]> => {
+  const response =
+    await apiClient.get<ApiSuccessResponse<ProviderService[]>>('/providers/me/services');
+  return response.data;
+};
+
+export const createProviderServiceRequest = async (
+  payload: UpsertProviderServicePayload
+): Promise<ProviderService> => {
+  const response = await apiClient.post<ApiSuccessResponse<ProviderService>>(
+    '/providers/me/services',
+    payload
+  );
+  return response.data;
+};
+
+export const updateProviderServiceRequest = async (
+  serviceId: string,
+  payload: UpsertProviderServicePayload
+): Promise<ProviderService> => {
+  const response = await apiClient.put<ApiSuccessResponse<ProviderService>>(
+    `/providers/me/services/${serviceId}`,
+    payload
+  );
+  return response.data;
+};
+
+export const deleteProviderServiceRequest = async (serviceId: string): Promise<void> => {
+  await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
+    `/providers/me/services/${serviceId}`
+  );
 };
 
 export const getProviderRevenueRequest = async (): Promise<ProviderRevenue> => {
