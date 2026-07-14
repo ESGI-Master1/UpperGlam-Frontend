@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import {
-  getProviderProfileRequest,
-  updateProviderProfileRequest,
-} from '@/api/providerDashboard';
+import { getProviderProfileRequest, updateProviderProfileRequest } from '@/api/providerDashboard';
 import { useAuth } from '@/store';
 import { theme } from '@/theme';
 import { ProviderProfile } from '@/types/providerDashboard';
@@ -16,6 +13,7 @@ export const ProviderProfileScreen: React.FC = () => {
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
   const [instituteAddress, setInstituteAddress] = useState('');
+  const [homeServiceZones, setHomeServiceZones] = useState('');
   const [price, setPrice] = useState('');
   const [homeEnabled, setHomeEnabled] = useState(false);
   const [instituteEnabled, setInstituteEnabled] = useState(false);
@@ -28,6 +26,7 @@ export const ProviderProfileScreen: React.FC = () => {
     setCity(nextProfile.city);
     setBio(nextProfile.bio ?? '');
     setInstituteAddress(nextProfile.instituteAddress ?? '');
+    setHomeServiceZones(nextProfile.homeServiceZones.join('\n'));
     setPrice(nextProfile.priceFromCents ? String(nextProfile.priceFromCents / 100) : '');
     setHomeEnabled(nextProfile.serviceModes.includes('home'));
     setInstituteEnabled(nextProfile.serviceModes.includes('institute'));
@@ -55,6 +54,10 @@ export const ProviderProfileScreen: React.FC = () => {
       ...(homeEnabled ? ['home' as const] : []),
       ...(instituteEnabled ? ['institute' as const] : []),
     ];
+    const zones = homeServiceZones
+      .split(/\r?\n|,/)
+      .map((zone) => zone.trim())
+      .filter(Boolean);
 
     try {
       const result = await updateProviderProfileRequest({
@@ -62,6 +65,7 @@ export const ProviderProfileScreen: React.FC = () => {
         city,
         bio: bio.trim() ? bio : null,
         instituteAddress: instituteAddress.trim() ? instituteAddress : null,
+        homeServiceZones: zones,
         priceFromCents: Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : null,
         serviceModes,
       });
@@ -110,6 +114,14 @@ export const ProviderProfileScreen: React.FC = () => {
             label="Adresse institut"
             value={instituteAddress}
             onChangeText={setInstituteAddress}
+          />
+          <Input
+            label="Zones de déplacement"
+            value={homeServiceZones}
+            onChangeText={setHomeServiceZones}
+            multiline
+            numberOfLines={3}
+            style={styles.zonesInput}
           />
           <Input
             label="Prix d'appel en euros"
@@ -180,6 +192,10 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 112,
+    textAlignVertical: 'top',
+  },
+  zonesInput: {
+    minHeight: 88,
     textAlignVertical: 'top',
   },
   switchRow: {

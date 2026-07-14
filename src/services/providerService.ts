@@ -64,6 +64,7 @@ const mapProvider = (dto: ProviderDto): Provider => {
     serviceModes: dto.serviceModes.filter(
       (mode): mode is 'home' | 'institute' => mode === 'home' || mode === 'institute'
     ),
+    homeServiceZones: dto.homeServiceZones ?? [],
     instituteAddress: dto.instituteAddress ?? undefined,
     tags: mapProviderTags(dto.tags),
     nextSlots: dto.nextSlots ?? [],

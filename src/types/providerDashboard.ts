@@ -7,6 +7,7 @@ export interface ProviderProfile {
   bio?: string | null;
   instituteAddress?: string | null;
   serviceModes: AppointmentMode[];
+  homeServiceZones: string[];
   priceFromCents?: number | null;
   currency: string;
   rating: number;
@@ -120,5 +121,6 @@ export interface UpdateProviderProfileInput {
   bio?: string | null;
   instituteAddress?: string | null;
   serviceModes?: AppointmentMode[];
+  homeServiceZones?: string[];
   priceFromCents?: number | null;
 }
