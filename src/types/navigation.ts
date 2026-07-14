@@ -16,6 +16,12 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+export type ProviderTabParamList = {
+  ProviderDashboard: undefined;
+  ProviderAgenda: undefined;
+  ProviderProfile: undefined;
+};
+
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
@@ -23,6 +29,7 @@ export type RootStackParamList = {
   ForgotPassword: { email?: string } | undefined;
   ResetPassword: { email?: string } | undefined;
   Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
+  ProviderTabs: NavigatorScreenParams<ProviderTabParamList> | undefined;
   ProviderDetails: { providerId: string };
   ProviderReviews: { providerId: string };
   ManageBooking: { bookingId: string };

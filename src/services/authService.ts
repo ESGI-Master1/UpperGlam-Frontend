@@ -64,6 +64,20 @@ const extractUserEmail = (response: AuthApiResponse, fallbackEmail: string): str
   );
 };
 
+const extractUserRoles = (response: AuthApiResponse): string[] => {
+  const rootUser = toRecord(response.user);
+  const nestedUser = toRecord(toRecord(response.data)?.user);
+  const rawRoles = rootUser?.roles ?? nestedUser?.roles ?? toRecord(response.data)?.roles;
+
+  if (!Array.isArray(rawRoles)) {
+    return [];
+  }
+
+  return rawRoles
+    .map((role) => extractString(role))
+    .filter((role): role is string => Boolean(role));
+};
+
 const toAuthPayload = (credentials: AuthCredentials): AuthPayloadDTO => {
   return {
     ...credentials,
@@ -80,6 +94,7 @@ const toAuthResult = (response: AuthApiResponse, fallbackEmail: string): AuthRes
   return {
     token,
     userEmail: extractUserEmail(response, fallbackEmail),
+    roles: extractUserRoles(response),
   };
 };
 

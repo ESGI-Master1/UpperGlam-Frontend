@@ -19,7 +19,7 @@ type ProfileNavigation = StackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileNavigation>();
-  const { userEmail, logout } = useAuth();
+  const { userEmail, logout, isProvider, switchExperience } = useAuth();
   const { bookings } = useBookings();
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [offersEnabled, setOffersEnabled] = useState(false);
@@ -219,6 +219,14 @@ export const ProfileScreen: React.FC = () => {
           <Text variant="heading" size="lg" weight="bold">
             Raccourcis
           </Text>
+          {isProvider ? (
+            <Button
+              title="Passer en vue prestataire"
+              variant="primary"
+              onPress={() => switchExperience('provider')}
+              fullWidth
+            />
+          ) : null}
           <Button
             title="Voir mes rendez-vous"
             variant="secondary"
