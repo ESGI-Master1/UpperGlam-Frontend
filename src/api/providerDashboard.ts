@@ -1,5 +1,8 @@
 import { ApiSuccessResponse, PaginatedMeta } from '@/types/api';
 import {
+  ProviderAvailabilityClosure,
+  ProviderAvailabilityRule,
+  ProviderAvailabilitySchedule,
   ProviderAvailabilitySlot,
   ProviderBooking,
   ProviderDashboard,
@@ -12,6 +15,20 @@ import { apiClient } from './client';
 export interface CreateProviderAvailabilityPayload {
   slotStartAt: string;
   slotEndAt: string;
+}
+
+export interface CreateProviderAvailabilityRulePayload {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  appointmentMode?: 'home' | 'institute' | null;
+  isActive?: boolean;
+}
+
+export interface CreateProviderAvailabilityClosurePayload {
+  startsAt: string;
+  endsAt: string;
+  reason?: string | null;
 }
 
 export interface ProviderBookingActionResult {
@@ -80,11 +97,16 @@ export const proposeProviderBookingSlotRequest = async (
 export const listProviderAvailabilityRequest = async (query?: {
   from?: string;
   to?: string;
-}): Promise<ProviderAvailabilitySlot[]> => {
-  const response = await apiClient.get<ApiSuccessResponse<ProviderAvailabilitySlot[]>>(
+}): Promise<ProviderAvailabilitySchedule> => {
+  const response = await apiClient.get<
+    ApiSuccessResponse<ProviderAvailabilitySchedule | ProviderAvailabilitySlot[]>
+  >(
     '/providers/me/availability',
     { params: query }
   );
+  if (Array.isArray(response.data)) {
+    return { slots: response.data, rules: [], closures: [] };
+  }
   return response.data;
 };
 
@@ -101,6 +123,40 @@ export const createProviderAvailabilityRequest = async (
 export const deleteProviderAvailabilityRequest = async (slotId: string): Promise<void> => {
   await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
     `/providers/me/availability/${slotId}`
+  );
+};
+
+export const createProviderAvailabilityRuleRequest = async (
+  payload: CreateProviderAvailabilityRulePayload
+): Promise<ProviderAvailabilityRule> => {
+  const response = await apiClient.post<ApiSuccessResponse<ProviderAvailabilityRule>>(
+    '/providers/me/availability/rules',
+    payload
+  );
+  return response.data;
+};
+
+export const deleteProviderAvailabilityRuleRequest = async (ruleId: string): Promise<void> => {
+  await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
+    `/providers/me/availability/rules/${ruleId}`
+  );
+};
+
+export const createProviderAvailabilityClosureRequest = async (
+  payload: CreateProviderAvailabilityClosurePayload
+): Promise<ProviderAvailabilityClosure> => {
+  const response = await apiClient.post<ApiSuccessResponse<ProviderAvailabilityClosure>>(
+    '/providers/me/availability/closures',
+    payload
+  );
+  return response.data;
+};
+
+export const deleteProviderAvailabilityClosureRequest = async (
+  closureId: string
+): Promise<void> => {
+  await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
+    `/providers/me/availability/closures/${closureId}`
   );
 };
 

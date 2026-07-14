@@ -2,15 +2,24 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import {
   acceptProviderBookingRequest,
+  createProviderAvailabilityClosureRequest,
   createProviderAvailabilityRequest,
+  createProviderAvailabilityRuleRequest,
+  deleteProviderAvailabilityClosureRequest,
   deleteProviderAvailabilityRequest,
+  deleteProviderAvailabilityRuleRequest,
   listProviderAvailabilityRequest,
   listProviderBookingsRequest,
   proposeProviderBookingSlotRequest,
   rejectProviderBookingRequest,
 } from '@/api/providerDashboard';
 import { theme } from '@/theme';
-import { ProviderAvailabilitySlot, ProviderBooking } from '@/types/providerDashboard';
+import {
+  ProviderAvailabilityClosure,
+  ProviderAvailabilityRule,
+  ProviderAvailabilitySlot,
+  ProviderBooking,
+} from '@/types/providerDashboard';
 import { formatDateTime, formatPrice } from '@/utils/format';
 import { Button, Card, EmptyState, Loader, Text } from '@/ui';
 
@@ -23,12 +32,19 @@ const centsToPrice = (cents: number): string => formatPrice(cents / 100);
 export const ProviderAgendaScreen: React.FC = () => {
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [slots, setSlots] = useState<ProviderAvailabilitySlot[]>([]);
+  const [rules, setRules] = useState<ProviderAvailabilityRule[]>([]);
+  const [closures, setClosures] = useState<ProviderAvailabilityClosure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingRule, setIsCreatingRule] = useState(false);
+  const [isCreatingClosure, setIsCreatingClosure] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rejectingBookingId, setRejectingBookingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [ruleWeekday, setRuleWeekday] = useState('1');
+  const [ruleStartTime, setRuleStartTime] = useState('09:00');
+  const [ruleEndTime, setRuleEndTime] = useState('18:00');
 
   const loadAgenda = useCallback(async (): Promise<void> => {
     setErrorMessage(null);
@@ -42,7 +58,9 @@ export const ProviderAgendaScreen: React.FC = () => {
         listProviderAvailabilityRequest({ from: from.toISOString(), to: to.toISOString() }),
       ]);
       setBookings(bookingResult.bookings);
-      setSlots(slotResult);
+      setSlots(slotResult.slots);
+      setRules(slotResult.rules);
+      setClosures(slotResult.closures);
     } catch {
       setErrorMessage("Impossible de charger l'agenda.");
     } finally {
@@ -102,6 +120,68 @@ export const ProviderAgendaScreen: React.FC = () => {
       );
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const createRule = async (): Promise<void> => {
+    const weekday = Number(ruleWeekday);
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      Alert.alert('Jour invalide', 'Utilise un chiffre entre 0 et 6.');
+      return;
+    }
+
+    setIsCreatingRule(true);
+    try {
+      await createProviderAvailabilityRuleRequest({
+        weekday,
+        startTime: ruleStartTime,
+        endTime: ruleEndTime,
+      });
+      await loadAgenda();
+    } catch {
+      Alert.alert('Règle non ajoutée', "Vérifie l'horaire ou évite les doublons.");
+    } finally {
+      setIsCreatingRule(false);
+    }
+  };
+
+  const deleteRule = async (ruleId: string): Promise<void> => {
+    try {
+      await deleteProviderAvailabilityRuleRequest(ruleId);
+      await loadAgenda();
+    } catch {
+      Alert.alert('Suppression impossible', 'Cette règle horaire est introuvable.');
+    }
+  };
+
+  const createClosure = async (): Promise<void> => {
+    setIsCreatingClosure(true);
+    const startsAt = new Date();
+    startsAt.setDate(startsAt.getDate() + 1);
+    startsAt.setHours(0, 0, 0, 0);
+    const endsAt = new Date(startsAt);
+    endsAt.setHours(23, 59, 0, 0);
+
+    try {
+      await createProviderAvailabilityClosureRequest({
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        reason: 'Fermeture prestataire',
+      });
+      await loadAgenda();
+    } catch {
+      Alert.alert('Fermeture non ajoutée', 'La période de fermeture est invalide.');
+    } finally {
+      setIsCreatingClosure(false);
+    }
+  };
+
+  const deleteClosure = async (closureId: string): Promise<void> => {
+    try {
+      await deleteProviderAvailabilityClosureRequest(closureId);
+      await loadAgenda();
+    } catch {
+      Alert.alert('Suppression impossible', 'Cette fermeture est introuvable.');
     }
   };
 
@@ -186,6 +266,24 @@ export const ProviderAgendaScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={
+            <AvailabilitySettings
+              closures={closures}
+              isCreatingClosure={isCreatingClosure}
+              isCreatingRule={isCreatingRule}
+              onCreateClosure={() => void createClosure()}
+              onCreateRule={() => void createRule()}
+              onDeleteClosure={(closureId) => void deleteClosure(closureId)}
+              onDeleteRule={(ruleId) => void deleteRule(ruleId)}
+              ruleEndTime={ruleEndTime}
+              ruleStartTime={ruleStartTime}
+              ruleWeekday={ruleWeekday}
+              rules={rules}
+              setRuleEndTime={setRuleEndTime}
+              setRuleStartTime={setRuleStartTime}
+              setRuleWeekday={setRuleWeekday}
+            />
+          }
           renderItem={({ item }) =>
             item.type === 'booking' ? (
               <BookingRow
@@ -227,6 +325,135 @@ const providerStatusLabel: Record<ProviderBooking['providerStatus'], string> = {
   rejected: 'Refusé',
   slot_proposed: 'Créneau proposé',
 };
+
+const weekdayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+const AvailabilitySettings: React.FC<{
+  closures: ProviderAvailabilityClosure[];
+  isCreatingClosure: boolean;
+  isCreatingRule: boolean;
+  onCreateClosure: () => void;
+  onCreateRule: () => void;
+  onDeleteClosure: (closureId: string) => void;
+  onDeleteRule: (ruleId: string) => void;
+  ruleEndTime: string;
+  ruleStartTime: string;
+  ruleWeekday: string;
+  rules: ProviderAvailabilityRule[];
+  setRuleEndTime: (value: string) => void;
+  setRuleStartTime: (value: string) => void;
+  setRuleWeekday: (value: string) => void;
+}> = ({
+  closures,
+  isCreatingClosure,
+  isCreatingRule,
+  onCreateClosure,
+  onCreateRule,
+  onDeleteClosure,
+  onDeleteRule,
+  ruleEndTime,
+  ruleStartTime,
+  ruleWeekday,
+  rules,
+  setRuleEndTime,
+  setRuleStartTime,
+  setRuleWeekday,
+}) => (
+  <View style={styles.settings}>
+    <Card style={styles.card}>
+      <Text size="md" weight="semibold">
+        Horaires récurrents
+      </Text>
+      <View style={styles.ruleForm}>
+        <TextInput
+          value={ruleWeekday}
+          onChangeText={setRuleWeekday}
+          keyboardType="number-pad"
+          placeholder="Jour 0-6"
+          style={[styles.input, styles.dayInput]}
+        />
+        <TextInput
+          value={ruleStartTime}
+          onChangeText={setRuleStartTime}
+          placeholder="09:00"
+          style={styles.input}
+        />
+        <TextInput
+          value={ruleEndTime}
+          onChangeText={setRuleEndTime}
+          placeholder="18:00"
+          style={styles.input}
+        />
+        <Button
+          title="Ajouter"
+          size="sm"
+          onPress={onCreateRule}
+          loading={isCreatingRule}
+          disabled={isCreatingRule}
+        />
+      </View>
+      {rules.length === 0 ? (
+        <Text size="xs" color="secondary">
+          Aucun horaire récurrent configuré.
+        </Text>
+      ) : (
+        <View style={styles.compactList}>
+          {rules.map((rule) => (
+            <View key={rule.id} style={styles.compactRow}>
+              <Text size="xs" color="secondary" style={styles.compactText}>
+                {weekdayLabels[rule.weekday] ?? `J${rule.weekday}`} · {rule.startTime}-
+                {rule.endTime}
+              </Text>
+              <Button title="Supprimer" size="sm" variant="outline" onPress={() => onDeleteRule(rule.id)} />
+            </View>
+          ))}
+        </View>
+      )}
+    </Card>
+
+    <Card style={styles.card}>
+      <View style={styles.row}>
+        <View style={styles.rowText}>
+          <Text size="md" weight="semibold">
+            Fermetures
+          </Text>
+          <Text size="xs" color="secondary">
+            Exceptions et absences connues
+          </Text>
+        </View>
+        <Button
+          title="Fermer demain"
+          size="sm"
+          variant="outline"
+          onPress={onCreateClosure}
+          loading={isCreatingClosure}
+          disabled={isCreatingClosure}
+        />
+      </View>
+      {closures.length === 0 ? (
+        <Text size="xs" color="secondary">
+          Aucune fermeture à venir.
+        </Text>
+      ) : (
+        <View style={styles.compactList}>
+          {closures.map((closure) => (
+            <View key={closure.id} style={styles.compactRow}>
+              <Text size="xs" color="secondary" style={styles.compactText}>
+                {formatDateTime(closure.startsAt)}
+              </Text>
+              <Button
+                title="Supprimer"
+                size="sm"
+                variant="outline"
+                onPress={() => onDeleteClosure(closure.id)}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+    </Card>
+  </View>
+);
 
 const BookingRow: React.FC<{
   booking: ProviderBooking;
@@ -353,8 +580,43 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xxl,
   },
+  settings: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
   card: {
     gap: theme.spacing.sm,
+  },
+  ruleForm: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  input: {
+    minWidth: 78,
+    borderWidth: 1,
+    borderColor: theme.colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    color: theme.colors.primaryText,
+    backgroundColor: theme.colors.surface,
+  },
+  dayInput: {
+    minWidth: 92,
+  },
+  compactList: {
+    gap: theme.spacing.xs,
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  compactText: {
+    flex: 1,
   },
   row: {
     flexDirection: 'row',

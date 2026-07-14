@@ -73,6 +73,28 @@ export interface ProviderAvailabilitySlot {
   bookingId?: string | null;
 }
 
+export interface ProviderAvailabilityRule {
+  id: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  appointmentMode?: AppointmentMode | null;
+  isActive: boolean;
+}
+
+export interface ProviderAvailabilityClosure {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  reason?: string | null;
+}
+
+export interface ProviderAvailabilitySchedule {
+  slots: ProviderAvailabilitySlot[];
+  rules: ProviderAvailabilityRule[];
+  closures: ProviderAvailabilityClosure[];
+}
+
 export interface ProviderRevenue {
   currency: string;
   month: {
