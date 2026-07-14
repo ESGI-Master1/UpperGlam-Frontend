@@ -11,6 +11,7 @@ import {
 import {
   Booking,
   BookingDraft,
+  CancelBookingResult,
   CreateBookingDraftInput,
   UpdateBookingInput,
 } from '@/types/booking';
@@ -40,6 +41,7 @@ const mapBookingDraft = (dto: BookingDraftDto): BookingDraft => {
     currency: dto.currency,
     createdAt: dto.createdAt,
     status: dto.status,
+    paymentStatus: dto.paymentStatus ?? null,
   };
 };
 
@@ -58,6 +60,9 @@ const mapBooking = (dto: BookingDto): Booking => {
     confirmationCode: dto.confirmationCode,
     paymentMethod: dto.paymentMethod,
     transactionId: dto.transactionId,
+    paymentStatus: dto.paymentStatus ?? null,
+    refundTransactionId: dto.refundTransactionId ?? null,
+    refundedAt: dto.refundedAt ?? null,
   };
 };
 
@@ -110,6 +115,12 @@ export const updateBooking = async (input: UpdateBookingInput): Promise<Booking>
   return mapBooking(updatedBooking);
 };
 
-export const cancelBooking = async (bookingId: string): Promise<void> => {
-  await cancelBookingRequest(toApiId(bookingId));
+export const cancelBooking = async (bookingId: string): Promise<CancelBookingResult> => {
+  const result = await cancelBookingRequest(toApiId(bookingId));
+  return {
+    id: String(result.id),
+    status: result.status,
+    refundEligible: result.refundEligible,
+    refundTransactionId: result.refundTransactionId,
+  };
 };

@@ -12,6 +12,7 @@ import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
 import { PaymentMethod } from '@/types/payment';
+import { Booking } from '@/types/booking';
 import { Button, Card, Container, Text } from '@/ui';
 import { formatDateTime, formatPrice } from '@/utils/format';
 import { getErrorMessage } from '@/utils/errors';
@@ -29,16 +30,24 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   google_pay: 'Google Pay',
 };
 
+const createPaymentAttemptKey = (draftId: string): string => {
+  return `payment:${draftId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+};
+
 export const PaymentScreen: React.FC = () => {
   const route = useRoute<PaymentRoute>();
   const navigation = useNavigation<PaymentNavigation>();
   const { getDraftById, finalizeDraft, markDraftAsFailed } = useBookings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
-    () => getAvailableWalletMethods()[0] ?? 'apple_pay'
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
+    () => getAvailableWalletMethods()[0] ?? null
+  );
+  const [paymentAttemptKey, setPaymentAttemptKey] = useState(() =>
+    createPaymentAttemptKey(route.params.draftId)
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   const draft = useMemo(
     () => getDraftById(route.params.draftId),
@@ -58,14 +67,19 @@ export const PaymentScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (paymentOptions.length > 0) {
+    if (paymentOptions.length > 0 && !selectedMethod) {
       setSelectedMethod(paymentOptions[0].value);
     }
-  }, [paymentOptions]);
+  }, [paymentOptions, selectedMethod]);
 
   const submitPayment = async (): Promise<void> => {
     if (!draft) {
       setErrorMessage('Réservation introuvable');
+      return;
+    }
+
+    if (!selectedMethod) {
+      setErrorMessage('Aucun moyen de paiement compatible n’est disponible sur cet appareil.');
       return;
     }
 
@@ -83,6 +97,7 @@ export const PaymentScreen: React.FC = () => {
         const payment = await createMollieCheckout({
           draftId: draft.id,
           method: selectedMethod,
+          idempotencyKey: paymentAttemptKey,
         });
         setPaymentId(payment.paymentId);
         await openMollieCheckout(payment.checkoutUrl!);
@@ -90,13 +105,13 @@ export const PaymentScreen: React.FC = () => {
         return;
       }
 
-      await finalizeDraft(draft.id, selectedMethod, paymentId);
+      const booking = await finalizeDraft(draft.id, selectedMethod, paymentId);
+      setConfirmedBooking(booking);
       trackEvent(ANALYTICS_EVENTS.PAYMENT_COMPLETED, {
         screen_name: 'Payment',
         status: 'success',
         code: selectedMethod,
       });
-      navigation.navigate('Tabs', { screen: 'Bookings' });
     } catch (error) {
       if (paymentId) {
         markDraftAsFailed(draft.id);
@@ -114,7 +129,12 @@ export const PaymentScreen: React.FC = () => {
 
   const restartPayment = (): void => {
     setPaymentId(null);
+    setPaymentAttemptKey(createPaymentAttemptKey(route.params.draftId));
     setErrorMessage(null);
+  };
+
+  const openBookings = (): void => {
+    navigation.navigate('Tabs', { screen: 'Bookings' });
   };
 
   if (!draft) {
@@ -123,6 +143,41 @@ export const PaymentScreen: React.FC = () => {
         <Text size="sm" color="accent">
           Réservation introuvable.
         </Text>
+      </Container>
+    );
+  }
+
+  if (confirmedBooking) {
+    return (
+      <Container>
+        <Text variant="heading" size="xl" weight="bold">
+          Paiement confirmé
+        </Text>
+        <Card style={styles.summary}>
+          <Text size="sm" color="secondary">
+            Réservation
+          </Text>
+          <Text size="lg" weight="bold">
+            {confirmedBooking.confirmationCode}
+          </Text>
+          <Text size="sm" color="secondary">
+            {formatDateTime(confirmedBooking.slot)}
+          </Text>
+          <Text size="sm" color="secondary">
+            {formatPrice(confirmedBooking.amount)} · {PAYMENT_LABELS[confirmedBooking.paymentMethod]}
+          </Text>
+          {confirmedBooking.transactionId ? (
+            <Text size="xs" color="secondary">
+              Transaction {confirmedBooking.transactionId}
+            </Text>
+          ) : null}
+        </Card>
+        <Button
+          title="Voir mes rendez-vous"
+          onPress={openBookings}
+          fullWidth
+          style={styles.payButton}
+        />
       </Container>
     );
   }
@@ -148,6 +203,17 @@ export const PaymentScreen: React.FC = () => {
         </Text>
       </Card>
 
+      {paymentOptions.length === 0 ? (
+        <Card style={styles.statusCard}>
+          <Text size="sm" weight="semibold">
+            Paiement indisponible
+          </Text>
+          <Text size="sm" color="secondary">
+            Apple Pay ou Google Pay n’est pas disponible sur cet appareil.
+          </Text>
+        </Card>
+      ) : null}
+
       {!paymentId && hasMultipleWalletOptions ? (
         <View style={styles.methods}>
           {paymentOptions.map((option) => (
@@ -168,7 +234,8 @@ export const PaymentScreen: React.FC = () => {
             Paiement Mollie ouvert
           </Text>
           <Text size="sm" color="secondary">
-            Termine le paiement dans la page Mollie, puis reviens ici pour confirmer la réservation.
+            Termine le paiement dans la page Mollie. Si la confirmation automatique prend quelques
+            secondes, reviens ici puis valide la réservation.
           </Text>
         </Card>
       ) : null}
@@ -180,9 +247,16 @@ export const PaymentScreen: React.FC = () => {
       ) : null}
 
       <Button
-        title={paymentId ? 'Valider mon paiement' : `Payer avec ${PAYMENT_LABELS[selectedMethod]}`}
+        title={
+          paymentId
+            ? 'Valider mon paiement'
+            : selectedMethod
+              ? `Payer avec ${PAYMENT_LABELS[selectedMethod]}`
+              : 'Paiement indisponible'
+        }
         onPress={submitPayment}
         loading={isSubmitting}
+        disabled={!selectedMethod}
         fullWidth
         style={styles.payButton}
       />

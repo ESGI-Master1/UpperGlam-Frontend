@@ -156,7 +156,15 @@ export const ManageBookingScreen: React.FC = () => {
           text: 'Annuler le rendez-vous',
           style: 'destructive',
           onPress: () => {
-            void cancelBooking(booking.id).then(() => navigation.goBack());
+            void cancelBooking(booking.id).then((result) => {
+              Alert.alert(
+                'Rendez-vous annulé',
+                result.refundTransactionId
+                  ? 'Le remboursement a été demandé automatiquement.'
+                  : 'Annulation prise en compte. Cette annulation n’est pas éligible à un remboursement automatique.'
+              );
+              navigation.goBack();
+            });
           },
         },
       ],

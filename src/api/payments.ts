@@ -1,17 +1,18 @@
 import { ApiSuccessResponse } from '@/types/api';
-import { PaymentMethod } from '@/types/payment';
+import { PaymentMethod, PaymentStatus } from '@/types/payment';
 import { apiClient } from './client';
 
 export interface CreatePaymentIntentPayload {
   draftId: number | string;
   method: PaymentMethod;
+  idempotencyKey: string;
 }
 
 export interface PaymentIntentResultDto {
   provider: 'mollie';
   paymentId: string;
   checkoutUrl: string | null;
-  status: string;
+  status: PaymentStatus;
   amountCents: number;
   currency: string;
 }
@@ -21,7 +22,15 @@ export const createPaymentIntentRequest = async (
 ): Promise<PaymentIntentResultDto> => {
   const response = await apiClient.post<ApiSuccessResponse<PaymentIntentResultDto>>(
     '/payments/intents',
-    payload
+    {
+      draftId: payload.draftId,
+      method: payload.method,
+    },
+    {
+      headers: {
+        'Idempotency-Key': payload.idempotencyKey,
+      },
+    }
   );
   return response.data;
 };

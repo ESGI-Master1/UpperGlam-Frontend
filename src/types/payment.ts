@@ -1,12 +1,14 @@
 export type PaymentMethod = 'apple_pay' | 'google_pay';
+export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
 
 export interface PaymentIntentInput {
   draftId: string;
   method: PaymentMethod;
+  idempotencyKey: string;
 }
 
 export interface PaymentResult {
-  status: 'succeeded' | 'failed';
+  status: PaymentStatus;
   transactionId: string;
   paymentIntentId?: string;
   providerReference?: string;

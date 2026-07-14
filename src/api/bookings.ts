@@ -1,5 +1,5 @@
 import { ApiSuccessResponse, PaginatedMeta } from '@/types/api';
-import { PaymentMethod } from '@/types/payment';
+import { PaymentMethod, PaymentStatus } from '@/types/payment';
 import { AppointmentMode } from '@/types/provider';
 import { apiClient } from './client';
 
@@ -14,6 +14,7 @@ export interface BookingDraftDto {
   currency: string;
   createdAt: string;
   status: 'pending_payment' | 'payment_failed' | 'expired';
+  paymentStatus?: PaymentStatus | null;
 }
 
 export interface BookingDto {
@@ -30,6 +31,9 @@ export interface BookingDto {
   confirmationCode: string;
   paymentMethod: PaymentMethod;
   transactionId: string;
+  paymentStatus?: PaymentStatus | null;
+  refundTransactionId?: string | null;
+  refundedAt?: string | null;
 }
 
 export interface CreateBookingDraftPayload {
@@ -122,9 +126,19 @@ export const updateBookingRequest = async (
 
 export const cancelBookingRequest = async (
   bookingId: number | string
-): Promise<{ id: number | string; status: 'cancelled' }> => {
+): Promise<{
+  id: number | string;
+  status: 'cancelled';
+  refundEligible: boolean;
+  refundTransactionId: string | null;
+}> => {
   const response = await apiClient.post<
-    ApiSuccessResponse<{ id: number | string; status: 'cancelled' }>
+    ApiSuccessResponse<{
+      id: number | string;
+      status: 'cancelled';
+      refundEligible: boolean;
+      refundTransactionId: string | null;
+    }>
   >(`${bookingPath(bookingId)}/cancel`);
   return response.data;
 };

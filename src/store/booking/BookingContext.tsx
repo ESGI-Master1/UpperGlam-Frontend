@@ -13,6 +13,7 @@ import { getProviderById } from '@/services/providerService';
 import {
   Booking,
   BookingDraft,
+  CancelBookingResult,
   CreateBookingDraftInput,
   UpdateBookingInput,
 } from '@/types/booking';
@@ -35,7 +36,7 @@ interface BookingContextValue {
     paymentId: string
   ) => Promise<Booking>;
   updateBooking: (input: UpdateBookingInput) => Promise<Booking>;
-  cancelBooking: (bookingId: string) => Promise<void>;
+  cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   refreshBookings: () => Promise<void>;
 }
 
@@ -215,15 +216,16 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     [resolveProviderNames]
   );
 
-  const cancelBooking = useCallback(async (bookingId: string): Promise<void> => {
+  const cancelBooking = useCallback(async (bookingId: string): Promise<CancelBookingResult> => {
     setIsSubmitting(true);
     try {
-      await cancelBookingRequest(bookingId);
+      const result = await cancelBookingRequest(bookingId);
       setBookings((current) => current.filter((booking) => booking.id !== bookingId));
       trackEvent(ANALYTICS_EVENTS.BOOKING_CANCELLED, {
         screen_name: 'ManageBooking',
         status: 'success',
       });
+      return result;
     } finally {
       setIsSubmitting(false);
     }

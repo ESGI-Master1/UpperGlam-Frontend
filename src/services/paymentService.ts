@@ -16,13 +16,14 @@ export const getAvailableWalletMethods = (): PaymentMethod[] => {
     return ['google_pay'];
   }
 
-  return ['apple_pay', 'google_pay'];
+  return [];
 };
 
 export const createMollieCheckout = async (input: PaymentIntentInput) => {
   const payment = await createPaymentIntentRequest({
     draftId: toApiId(input.draftId),
     method: input.method,
+    idempotencyKey: input.idempotencyKey,
   });
 
   if (!payment.checkoutUrl) {

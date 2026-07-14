@@ -1,4 +1,4 @@
-import { PaymentMethod } from './payment';
+import { PaymentMethod, PaymentStatus } from './payment';
 import { AppointmentMode } from './provider';
 
 export interface CreateBookingDraftInput {
@@ -20,6 +20,7 @@ export interface BookingDraft {
   currency: string;
   createdAt: string;
   status: 'pending_payment' | 'payment_failed' | 'expired';
+  paymentStatus?: PaymentStatus | null;
 }
 
 export interface Booking {
@@ -36,6 +37,9 @@ export interface Booking {
   confirmationCode: string;
   paymentMethod: PaymentMethod;
   transactionId: string;
+  paymentStatus?: PaymentStatus | null;
+  refundTransactionId?: string | null;
+  refundedAt?: string | null;
 }
 
 export interface UpdateBookingInput {
@@ -44,4 +48,11 @@ export interface UpdateBookingInput {
   appointmentMode: AppointmentMode;
   address?: string;
   note?: string;
+}
+
+export interface CancelBookingResult {
+  id: string;
+  status: 'cancelled';
+  refundEligible: boolean;
+  refundTransactionId: string | null;
 }
