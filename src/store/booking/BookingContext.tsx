@@ -149,11 +149,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
   );
 
   const finalizeDraft = useCallback(
-    async (
-      draftId: string,
-      paymentMethod: PaymentMethod,
-      paymentId: string
-    ): Promise<Booking> => {
+    async (draftId: string, paymentMethod: PaymentMethod, paymentId: string): Promise<Booking> => {
       setIsSubmitting(true);
       try {
         const draft =

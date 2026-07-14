@@ -164,7 +164,8 @@ export const PaymentScreen: React.FC = () => {
             {formatDateTime(confirmedBooking.slot)}
           </Text>
           <Text size="sm" color="secondary">
-            {formatPrice(confirmedBooking.amount)} · {PAYMENT_LABELS[confirmedBooking.paymentMethod]}
+            {formatPrice(confirmedBooking.amount)} ·{' '}
+            {PAYMENT_LABELS[confirmedBooking.paymentMethod]}
           </Text>
           {confirmedBooking.transactionId ? (
             <Text size="xs" color="secondary">

@@ -57,7 +57,11 @@ export const RootNavigator: React.FC = () => {
               options={{ headerShown: false }}
             />
           ) : (
-            <Stack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Tabs"
+              component={MainTabNavigator}
+              options={{ headerShown: false }}
+            />
           )}
           <Stack.Screen
             name="ProviderDetails"
