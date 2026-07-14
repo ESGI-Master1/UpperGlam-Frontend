@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import {
+  acceptProviderBookingRequest,
   createProviderAvailabilityRequest,
   deleteProviderAvailabilityRequest,
   listProviderAvailabilityRequest,
   listProviderBookingsRequest,
+  proposeProviderBookingSlotRequest,
+  rejectProviderBookingRequest,
 } from '@/api/providerDashboard';
 import { theme } from '@/theme';
 import { ProviderAvailabilitySlot, ProviderBooking } from '@/types/providerDashboard';
@@ -24,6 +27,8 @@ export const ProviderAgendaScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rejectingBookingId, setRejectingBookingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const loadAgenda = useCallback(async (): Promise<void> => {
     setErrorMessage(null);
@@ -91,7 +96,10 @@ export const ProviderAgendaScreen: React.FC = () => {
       });
       await loadAgenda();
     } catch {
-      Alert.alert('Créneau non ajouté', 'Le créneau existe peut-être déjà ou la date est invalide.');
+      Alert.alert(
+        'Créneau non ajouté',
+        'Le créneau existe peut-être déjà ou la date est invalide.'
+      );
     } finally {
       setIsCreating(false);
     }
@@ -103,6 +111,51 @@ export const ProviderAgendaScreen: React.FC = () => {
       await loadAgenda();
     } catch {
       Alert.alert('Suppression impossible', 'Ce créneau est peut-être déjà réservé.');
+    }
+  };
+
+  const acceptBooking = async (bookingId: string): Promise<void> => {
+    try {
+      await acceptProviderBookingRequest(bookingId);
+      await loadAgenda();
+    } catch {
+      Alert.alert('Action impossible', 'Cette réservation a peut-être déjà été traitée.');
+    }
+  };
+
+  const rejectBooking = async (bookingId: string, reason: string): Promise<void> => {
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      Alert.alert('Motif requis', 'Le motif de refus est obligatoire.');
+      return;
+    }
+
+    try {
+      await rejectProviderBookingRequest(bookingId, trimmedReason);
+      setRejectingBookingId(null);
+      setRejectReason('');
+      await loadAgenda();
+    } catch {
+      Alert.alert('Action impossible', 'Cette réservation a peut-être déjà été traitée.');
+    }
+  };
+
+  const proposeSlot = async (bookingId: string): Promise<void> => {
+    const start = new Date();
+    start.setDate(start.getDate() + 2);
+    start.setHours(10, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(11, 0, 0, 0);
+
+    try {
+      await proposeProviderBookingSlotRequest(bookingId, {
+        slotStartAt: start.toISOString(),
+        slotEndAt: end.toISOString(),
+        note: 'Nouveau créneau proposé par le prestataire.',
+      });
+      await loadAgenda();
+    } catch {
+      Alert.alert('Proposition impossible', 'Le créneau proposé est invalide ou déjà traité.');
     }
   };
 
@@ -135,7 +188,23 @@ export const ProviderAgendaScreen: React.FC = () => {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
           renderItem={({ item }) =>
             item.type === 'booking' ? (
-              <BookingRow booking={item.booking} />
+              <BookingRow
+                booking={item.booking}
+                onAccept={() => void acceptBooking(item.booking.id)}
+                onProposeSlot={() => void proposeSlot(item.booking.id)}
+                onReject={() => {
+                  setRejectingBookingId(item.booking.id);
+                  setRejectReason('');
+                }}
+                onRejectCancel={() => {
+                  setRejectingBookingId(null);
+                  setRejectReason('');
+                }}
+                onRejectConfirm={() => void rejectBooking(item.booking.id, rejectReason)}
+                rejectReason={rejectingBookingId === item.booking.id ? rejectReason : ''}
+                rejecting={rejectingBookingId === item.booking.id}
+                setRejectReason={setRejectReason}
+              />
             ) : (
               <SlotRow slot={item.slot} onDelete={() => void deleteSlot(item.slot.id)} />
             )
@@ -152,8 +221,38 @@ export const ProviderAgendaScreen: React.FC = () => {
   );
 };
 
-const BookingRow: React.FC<{ booking: ProviderBooking }> = ({ booking }) => {
-  const customerName = [booking.customer.firstName, booking.customer.lastName].filter(Boolean).join(' ');
+const providerStatusLabel: Record<ProviderBooking['providerStatus'], string> = {
+  pending: 'À traiter',
+  accepted: 'Accepté',
+  rejected: 'Refusé',
+  slot_proposed: 'Créneau proposé',
+};
+
+const BookingRow: React.FC<{
+  booking: ProviderBooking;
+  onAccept: () => void;
+  onProposeSlot: () => void;
+  onRejectCancel: () => void;
+  onRejectConfirm: () => void;
+  onReject: () => void;
+  rejectReason: string;
+  rejecting: boolean;
+  setRejectReason: (value: string) => void;
+}> = ({
+  booking,
+  onAccept,
+  onProposeSlot,
+  onReject,
+  onRejectCancel,
+  onRejectConfirm,
+  rejecting,
+  rejectReason,
+  setRejectReason,
+}) => {
+  const customerName = [booking.customer.firstName, booking.customer.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const canRespond = booking.status === 'paid' && booking.providerStatus === 'pending';
 
   return (
     <Card style={styles.card}>
@@ -177,10 +276,45 @@ const BookingRow: React.FC<{ booking: ProviderBooking }> = ({ booking }) => {
             {centsToPrice(booking.amountCents)}
           </Text>
           <Text size="xs" color="secondary">
-            {booking.status === 'paid' ? 'Confirmé' : 'Annulé'}
+            {providerStatusLabel[booking.providerStatus]}
           </Text>
         </View>
       </View>
+      {booking.providerResponseNote ? (
+        <Text size="xs" color="secondary">
+          Note prestataire: {booking.providerResponseNote}
+        </Text>
+      ) : null}
+      {booking.providerProposedSlotStartAt ? (
+        <Text size="xs" color="secondary">
+          Proposition: {formatDateTime(booking.providerProposedSlotStartAt)}
+        </Text>
+      ) : null}
+      {canRespond ? (
+        <View style={styles.actions}>
+          <Button title="Accepter" size="sm" onPress={onAccept} />
+          <Button title="Proposer" size="sm" variant="outline" onPress={onProposeSlot} />
+          <Button title="Refuser" size="sm" variant="outline" onPress={onReject} />
+        </View>
+      ) : null}
+      {rejecting ? (
+        <View style={styles.rejectBox}>
+          <Text size="xs" color="secondary">
+            Motif de refus
+          </Text>
+          <TextInput
+            value={rejectReason}
+            onChangeText={setRejectReason}
+            placeholder="Ex: indisponible sur ce créneau"
+            multiline
+            style={styles.rejectInput}
+          />
+          <View style={styles.actions}>
+            <Button title="Confirmer le refus" size="sm" onPress={onRejectConfirm} />
+            <Button title="Annuler" size="sm" variant="outline" onPress={onRejectCancel} />
+          </View>
+        </View>
+      ) : null}
     </Card>
   );
 };
@@ -236,5 +370,23 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 2,
   },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  rejectBox: {
+    gap: theme.spacing.sm,
+  },
+  rejectInput: {
+    minHeight: 72,
+    borderWidth: 1,
+    borderColor: theme.colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    color: theme.colors.primaryText,
+    backgroundColor: theme.colors.surface,
+    textAlignVertical: 'top',
+  },
 });
-

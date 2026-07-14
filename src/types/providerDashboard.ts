@@ -31,7 +31,10 @@ export interface ProviderDashboardBooking {
   amountCents: number;
   currency: string;
   status: 'paid' | 'cancelled';
+  providerStatus: ProviderBookingStatus;
 }
+
+export type ProviderBookingStatus = 'pending' | 'accepted' | 'rejected' | 'slot_proposed';
 
 export interface ProviderDashboard {
   provider: ProviderProfile;
@@ -49,6 +52,11 @@ export interface ProviderBooking {
   amountCents: number;
   currency: string;
   status: 'paid' | 'cancelled';
+  providerStatus: ProviderBookingStatus;
+  providerResponseNote?: string | null;
+  providerProposedSlotStartAt?: string | null;
+  providerProposedSlotEndAt?: string | null;
+  providerRespondedAt?: string | null;
   confirmationCode: string;
   customer: {
     firstName?: string | null;
@@ -92,4 +100,3 @@ export interface UpdateProviderProfileInput {
   serviceModes?: AppointmentMode[];
   priceFromCents?: number | null;
 }
-
