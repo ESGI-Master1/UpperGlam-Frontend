@@ -14,11 +14,12 @@
     "prebuild": "npx expo prebuild --clean",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "test": "vitest run",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "type-check": "tsc --noEmit",
-    "workflow:check": "npm run lint && npm run type-check",
+    "workflow:check": "npm run lint && npm run type-check && npm test",
     "prepare": "node .husky/install.mjs"
   },
   "dependencies": {
@@ -57,7 +58,8 @@
     "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
     "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.10"
   },
   "private": true
 }

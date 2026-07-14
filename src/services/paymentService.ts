@@ -2,7 +2,7 @@ import { Linking, Platform } from 'react-native';
 import { createPaymentIntentRequest } from '@/api/payments';
 import { PaymentIntentInput, PaymentMethod } from '@/types/payment';
 
-const toApiId = (value: string): number | string => {
+export const toPaymentApiId = (value: string): number | string => {
   const numericId = Number(value);
   return Number.isInteger(numericId) ? numericId : value;
 };
@@ -21,7 +21,7 @@ export const getAvailableWalletMethods = (): PaymentMethod[] => {
 
 export const createMollieCheckout = async (input: PaymentIntentInput) => {
   const payment = await createPaymentIntentRequest({
-    draftId: toApiId(input.draftId),
+    draftId: toPaymentApiId(input.draftId),
     method: input.method,
     idempotencyKey: input.idempotencyKey,
   });
