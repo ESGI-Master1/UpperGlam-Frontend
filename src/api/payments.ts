@@ -8,9 +8,9 @@ export interface CreatePaymentIntentPayload {
 }
 
 export interface PaymentIntentResultDto {
-  provider: 'stripe';
-  paymentIntentId: string;
-  clientSecret: string;
+  provider: 'mollie';
+  paymentId: string;
+  checkoutUrl: string | null;
   status: string;
   amountCents: number;
   currency: string;

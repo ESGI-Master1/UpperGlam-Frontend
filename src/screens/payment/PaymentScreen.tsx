@@ -2,14 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { StyleSheet, View } from 'react-native';
-import { PlatformPay, usePlatformPay } from '@stripe/stripe-react-native';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
-  createStripePaymentIntent,
+  createMollieCheckout,
   getAvailableWalletMethods,
-  isStripePaymentConfigured,
+  openMollieCheckout,
 } from '@/services/paymentService';
-import { env } from '@/app/config/env';
 import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
@@ -34,10 +32,9 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
 export const PaymentScreen: React.FC = () => {
   const route = useRoute<PaymentRoute>();
   const navigation = useNavigation<PaymentNavigation>();
-  const { confirmPlatformPayPayment, isPlatformPaySupported } = usePlatformPay();
   const { getDraftById, finalizeDraft, markDraftAsFailed } = useBookings();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isWalletSupported, setIsWalletSupported] = useState(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     () => getAvailableWalletMethods()[0] ?? 'apple_pay'
   );
@@ -61,28 +58,6 @@ export const PaymentScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const checkWalletSupport = async (): Promise<void> => {
-      if (!isStripePaymentConfigured()) {
-        setIsWalletSupported(false);
-        return;
-      }
-
-      if (selectedMethod === 'google_pay') {
-        setIsWalletSupported(
-          await isPlatformPaySupported({
-            googlePay: { testEnv: env.stripeGooglePayTestEnv },
-          })
-        );
-        return;
-      }
-
-      setIsWalletSupported(await isPlatformPaySupported());
-    };
-
-    void checkWalletSupport();
-  }, [isPlatformPaySupported, selectedMethod]);
-
-  useEffect(() => {
     if (paymentOptions.length > 0) {
       setSelectedMethod(paymentOptions[0].value);
     }
@@ -91,16 +66,6 @@ export const PaymentScreen: React.FC = () => {
   const submitPayment = async (): Promise<void> => {
     if (!draft) {
       setErrorMessage('Réservation introuvable');
-      return;
-    }
-
-    if (!isStripePaymentConfigured()) {
-      setErrorMessage('Stripe n’est pas configuré sur cette application.');
-      return;
-    }
-
-    if (!isWalletSupported) {
-      setErrorMessage('Le paiement wallet n’est pas disponible sur cet appareil.');
       return;
     }
 
@@ -114,57 +79,18 @@ export const PaymentScreen: React.FC = () => {
     });
 
     try {
-      const paymentIntent = await createStripePaymentIntent({
-        draftId: draft.id,
-        method: selectedMethod,
-      });
-
-      const { error } =
-        selectedMethod === 'google_pay'
-          ? await confirmPlatformPayPayment(paymentIntent.clientSecret, {
-              googlePay: {
-                testEnv: env.stripeGooglePayTestEnv,
-                merchantName: 'Upper Glam',
-                merchantCountryCode: env.stripeMerchantCountryCode,
-                currencyCode: paymentIntent.currency,
-                billingAddressConfig: {
-                  format: PlatformPay.BillingAddressFormat.Full,
-                  isPhoneNumberRequired: true,
-                  isRequired: true,
-                },
-              },
-            })
-          : await confirmPlatformPayPayment(paymentIntent.clientSecret, {
-              applePay: {
-                merchantCountryCode: env.stripeMerchantCountryCode,
-                currencyCode: paymentIntent.currency,
-                cartItems: [
-                  {
-                    label: 'Prestation beauté',
-                    amount: draft.amount.toFixed(2),
-                    paymentType: PlatformPay.PaymentType.Immediate,
-                  },
-                  {
-                    label: 'Upper Glam',
-                    amount: draft.amount.toFixed(2),
-                    paymentType: PlatformPay.PaymentType.Immediate,
-                  },
-                ],
-              },
-            });
-
-      if (error) {
-        markDraftAsFailed(draft.id);
-        trackEvent(ANALYTICS_EVENTS.PAYMENT_FAILED, {
-          screen_name: 'Payment',
-          status: 'error',
-          error_code: error.code ?? 'stripe_payment_failed',
+      if (!paymentId) {
+        const payment = await createMollieCheckout({
+          draftId: draft.id,
+          method: selectedMethod,
         });
-        setErrorMessage(error.message ?? 'Le paiement a échoué. Réessaie.');
+        setPaymentId(payment.paymentId);
+        await openMollieCheckout(payment.checkoutUrl!);
+        setErrorMessage('Après paiement, reviens ici puis valide la réservation.');
         return;
       }
 
-      await finalizeDraft(draft.id, selectedMethod, paymentIntent.paymentIntentId);
+      await finalizeDraft(draft.id, selectedMethod, paymentId);
       trackEvent(ANALYTICS_EVENTS.PAYMENT_COMPLETED, {
         screen_name: 'Payment',
         status: 'success',
@@ -172,6 +98,9 @@ export const PaymentScreen: React.FC = () => {
       });
       navigation.navigate('Tabs', { screen: 'Bookings' });
     } catch (error) {
+      if (paymentId) {
+        markDraftAsFailed(draft.id);
+      }
       setErrorMessage(getErrorMessage(error, 'Erreur de paiement'));
       trackEvent(ANALYTICS_EVENTS.PAYMENT_FAILED, {
         screen_name: 'Payment',
@@ -181,6 +110,11 @@ export const PaymentScreen: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const restartPayment = (): void => {
+    setPaymentId(null);
+    setErrorMessage(null);
   };
 
   if (!draft) {
@@ -202,7 +136,7 @@ export const PaymentScreen: React.FC = () => {
         Créneau: {formatDateTime(draft.slot)}
       </Text>
       <Text size="sm" color="secondary" style={styles.walletSubtitle}>
-        Paiement uniquement via wallet mobile natif.
+        Paiement sécurisé via Mollie.
       </Text>
 
       <Card style={styles.summary}>
@@ -214,7 +148,7 @@ export const PaymentScreen: React.FC = () => {
         </Text>
       </Card>
 
-      {hasMultipleWalletOptions ? (
+      {!paymentId && hasMultipleWalletOptions ? (
         <View style={styles.methods}>
           {paymentOptions.map((option) => (
             <Button
@@ -228,6 +162,17 @@ export const PaymentScreen: React.FC = () => {
         </View>
       ) : null}
 
+      {paymentId ? (
+        <Card style={styles.statusCard}>
+          <Text size="sm" weight="semibold">
+            Paiement Mollie ouvert
+          </Text>
+          <Text size="sm" color="secondary">
+            Termine le paiement dans la page Mollie, puis reviens ici pour confirmer la réservation.
+          </Text>
+        </Card>
+      ) : null}
+
       {errorMessage ? (
         <Text size="sm" color="accent" style={styles.error}>
           {errorMessage}
@@ -235,13 +180,21 @@ export const PaymentScreen: React.FC = () => {
       ) : null}
 
       <Button
-        title={`Payer avec ${PAYMENT_LABELS[selectedMethod]}`}
+        title={paymentId ? 'Valider mon paiement' : `Payer avec ${PAYMENT_LABELS[selectedMethod]}`}
         onPress={submitPayment}
         loading={isSubmitting}
-        disabled={!isWalletSupported || !isStripePaymentConfigured()}
         fullWidth
         style={styles.payButton}
       />
+      {paymentId ? (
+        <Button
+          title="Recommencer le paiement"
+          variant="tertiary"
+          onPress={restartPayment}
+          fullWidth
+          style={styles.secondaryButton}
+        />
+      ) : null}
     </Container>
   );
 };
@@ -260,10 +213,17 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.lg,
     gap: theme.spacing.sm,
   },
+  statusCard: {
+    marginTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
   error: {
     marginTop: theme.spacing.md,
   },
   payButton: {
     marginTop: theme.spacing.lg,
+  },
+  secondaryButton: {
+    marginTop: theme.spacing.sm,
   },
 });

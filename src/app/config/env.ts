@@ -21,8 +21,5 @@ export const env = {
     process.env.EXPO_PUBLIC_POSTHOG_HOST ??
     process.env.VITE_PUBLIC_POSTHOG_HOST ??
     'https://app.posthog.com',
-  stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
-  stripeMerchantIdentifier: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? '',
-  stripeMerchantCountryCode: process.env.EXPO_PUBLIC_STRIPE_MERCHANT_COUNTRY_CODE ?? 'FR',
-  stripeGooglePayTestEnv: process.env.EXPO_PUBLIC_STRIPE_GOOGLE_PAY_TEST_ENV !== 'false',
+  mollieReturnUrl: process.env.EXPO_PUBLIC_MOLLIE_RETURN_URL ?? 'upperglam://payment-return',
 } as const;
