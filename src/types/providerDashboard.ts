@@ -105,6 +105,14 @@ export interface ProviderService {
   isActive: boolean;
 }
 
+export interface ProviderGalleryItem {
+  id: string;
+  mediaId: string;
+  imageUrl?: string | null;
+  title?: string | null;
+  position: number;
+}
+
 export interface ProviderRevenue {
   currency: string;
   month: {

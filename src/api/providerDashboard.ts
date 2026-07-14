@@ -6,6 +6,7 @@ import {
   ProviderAvailabilitySlot,
   ProviderBooking,
   ProviderDashboard,
+  ProviderGalleryItem,
   ProviderProfile,
   ProviderRevenue,
   ProviderService,
@@ -38,6 +39,12 @@ export interface UpsertProviderServicePayload {
   priceCents: number;
   category: string;
   isActive?: boolean;
+}
+
+export interface AddProviderGalleryItemPayload {
+  mediaId: number;
+  title?: string | null;
+  position?: number;
 }
 
 export interface ProviderBookingActionResult {
@@ -215,6 +222,38 @@ export const updateProviderServiceRequest = async (
 export const deleteProviderServiceRequest = async (serviceId: string): Promise<void> => {
   await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
     `/providers/me/services/${serviceId}`
+  );
+};
+
+export const listProviderGalleryRequest = async (): Promise<ProviderGalleryItem[]> => {
+  const response =
+    await apiClient.get<ApiSuccessResponse<ProviderGalleryItem[]>>('/providers/me/gallery');
+  return response.data;
+};
+
+export const addProviderGalleryItemRequest = async (
+  payload: AddProviderGalleryItemPayload
+): Promise<ProviderGalleryItem> => {
+  const response = await apiClient.post<ApiSuccessResponse<ProviderGalleryItem>>(
+    '/providers/me/gallery',
+    payload
+  );
+  return response.data;
+};
+
+export const reorderProviderGalleryRequest = async (
+  itemIds: Array<string | number>
+): Promise<ProviderGalleryItem[]> => {
+  const response = await apiClient.put<ApiSuccessResponse<ProviderGalleryItem[]>>(
+    '/providers/me/gallery/order',
+    { itemIds: itemIds.map((itemId) => Number(itemId)) }
+  );
+  return response.data;
+};
+
+export const deleteProviderGalleryItemRequest = async (itemId: string): Promise<void> => {
+  await apiClient.delete<ApiSuccessResponse<{ deleted: boolean }>>(
+    `/providers/me/gallery/${itemId}`
   );
 };
 

@@ -1,16 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import {
+  addProviderGalleryItemRequest,
   createProviderServiceRequest,
+  deleteProviderGalleryItemRequest,
   deleteProviderServiceRequest,
   getProviderProfileRequest,
+  listProviderGalleryRequest,
   listProviderServicesRequest,
+  reorderProviderGalleryRequest,
   updateProviderProfileRequest,
   updateProviderServiceRequest,
 } from '@/api/providerDashboard';
 import { useAuth } from '@/store';
 import { theme } from '@/theme';
-import { ProviderProfile, ProviderService } from '@/types/providerDashboard';
+import { ProviderGalleryItem, ProviderProfile, ProviderService } from '@/types/providerDashboard';
 import { Button, Card, Input, Loader, Text } from '@/ui';
 import { formatPrice } from '@/utils/format';
 
@@ -18,6 +22,7 @@ export const ProviderProfileScreen: React.FC = () => {
   const { logout, switchExperience, userEmail } = useAuth();
   const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [services, setServices] = useState<ProviderService[]>([]);
+  const [galleryItems, setGalleryItems] = useState<ProviderGalleryItem[]>([]);
   const [displayName, setDisplayName] = useState('');
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
@@ -30,9 +35,12 @@ export const ProviderProfileScreen: React.FC = () => {
   const [serviceCategory, setServiceCategory] = useState('');
   const [serviceDuration, setServiceDuration] = useState('45');
   const [servicePrice, setServicePrice] = useState('');
+  const [galleryMediaId, setGalleryMediaId] = useState('');
+  const [galleryTitle, setGalleryTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingService, setIsSavingService] = useState(false);
+  const [isSavingGallery, setIsSavingGallery] = useState(false);
 
   const hydrateForm = (nextProfile: ProviderProfile): void => {
     setProfile(nextProfile);
@@ -48,12 +56,14 @@ export const ProviderProfileScreen: React.FC = () => {
 
   const loadProfile = useCallback(async (): Promise<void> => {
     try {
-      const [profileResult, servicesResult] = await Promise.all([
+      const [profileResult, servicesResult, galleryResult] = await Promise.all([
         getProviderProfileRequest(),
         listProviderServicesRequest(),
+        listProviderGalleryRequest(),
       ]);
       hydrateForm(profileResult);
       setServices(servicesResult);
+      setGalleryItems(galleryResult);
     } catch {
       Alert.alert('Profil indisponible', 'Impossible de charger le profil professionnel.');
     } finally {
@@ -149,6 +159,54 @@ export const ProviderProfileScreen: React.FC = () => {
     }
   };
 
+  const addGalleryItem = async (): Promise<void> => {
+    const mediaId = Number(galleryMediaId);
+    if (!Number.isFinite(mediaId) || mediaId <= 0) {
+      Alert.alert('Media invalide', 'Renseigne un mediaId valide.');
+      return;
+    }
+
+    setIsSavingGallery(true);
+    try {
+      await addProviderGalleryItemRequest({
+        mediaId,
+        title: galleryTitle.trim() ? galleryTitle : null,
+      });
+      setGalleryMediaId('');
+      setGalleryTitle('');
+      setGalleryItems(await listProviderGalleryRequest());
+    } catch {
+      Alert.alert('Photo non ajoutée', "Le média doit appartenir au compte prestataire.");
+    } finally {
+      setIsSavingGallery(false);
+    }
+  };
+
+  const deleteGalleryItem = async (itemId: string): Promise<void> => {
+    try {
+      await deleteProviderGalleryItemRequest(itemId);
+      setGalleryItems(await listProviderGalleryRequest());
+    } catch {
+      Alert.alert('Suppression impossible', 'Cette photo est peut-être introuvable.');
+    }
+  };
+
+  const moveGalleryItem = async (index: number, direction: -1 | 1): Promise<void> => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= galleryItems.length) {
+      return;
+    }
+
+    const nextItems = [...galleryItems];
+    const [item] = nextItems.splice(index, 1);
+    nextItems.splice(nextIndex, 0, item);
+    try {
+      setGalleryItems(await reorderProviderGalleryRequest(nextItems.map((nextItem) => nextItem.id)));
+    } catch {
+      Alert.alert('Ordre non modifié', "Impossible d'enregistrer l'ordre des photos.");
+    }
+  };
+
   if (isLoading) {
     return <Loader fullScreen text="Chargement du profil pro..." />;
   }
@@ -168,6 +226,72 @@ export const ProviderProfileScreen: React.FC = () => {
               {profile.rating.toFixed(1)} / 5 · {profile.reviewCount} avis
             </Text>
           ) : null}
+        </Card>
+
+        <Card style={styles.formCard}>
+          <Text variant="heading" size="lg" weight="bold">
+            Galerie photo
+          </Text>
+          <Input
+            label="Media ID"
+            value={galleryMediaId}
+            onChangeText={setGalleryMediaId}
+            keyboardType="number-pad"
+          />
+          <Input label="Titre photo" value={galleryTitle} onChangeText={setGalleryTitle} />
+          <Button
+            title="Ajouter la photo"
+            onPress={addGalleryItem}
+            loading={isSavingGallery}
+            fullWidth
+          />
+          {galleryItems.length === 0 ? (
+            <Text size="sm" color="secondary">
+              Aucune photo dans la galerie.
+            </Text>
+          ) : (
+            <View style={styles.galleryList}>
+              {galleryItems.map((item, index) => (
+                <View key={item.id} style={styles.galleryRow}>
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.galleryThumb} />
+                  ) : (
+                    <View style={styles.galleryThumb} />
+                  )}
+                  <View style={styles.galleryText}>
+                    <Text size="sm" weight="semibold">
+                      {item.title || `Photo ${index + 1}`}
+                    </Text>
+                    <Text size="xs" color="secondary">
+                      Media #{item.mediaId}
+                    </Text>
+                  </View>
+                  <View style={styles.galleryActions}>
+                    <Button
+                      title="Haut"
+                      size="sm"
+                      variant="outline"
+                      disabled={index === 0}
+                      onPress={() => void moveGalleryItem(index, -1)}
+                    />
+                    <Button
+                      title="Bas"
+                      size="sm"
+                      variant="outline"
+                      disabled={index === galleryItems.length - 1}
+                      onPress={() => void moveGalleryItem(index, 1)}
+                    />
+                    <Button
+                      title="Supprimer"
+                      size="sm"
+                      variant="outline"
+                      onPress={() => void deleteGalleryItem(item.id)}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </Card>
 
         <Card style={styles.formCard}>
@@ -368,6 +492,29 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   serviceActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  galleryList: {
+    gap: theme.spacing.sm,
+  },
+  galleryRow: {
+    gap: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.background,
+    paddingTop: theme.spacing.sm,
+  },
+  galleryThumb: {
+    width: '100%',
+    height: 132,
+    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+  },
+  galleryText: {
+    gap: 2,
+  },
+  galleryActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
