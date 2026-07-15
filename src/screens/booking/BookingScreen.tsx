@@ -9,8 +9,9 @@ import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
 import { AppointmentMode, Provider } from '@/types/provider';
-import { Button, Card, Icon, Input, KeyboardScreen, Loader, Text } from '@/ui';
+import { Button, Card, EmptyState, Icon, Input, KeyboardScreen, Loader, Text } from '@/ui';
 import { formatPrice } from '@/utils/format';
+import { getErrorMessage } from '@/utils/errors';
 import { AUTH_VALIDATION_MESSAGES } from '@/utils/validation';
 
 interface BookingFormValues {
@@ -53,6 +54,8 @@ export const BookingScreen: React.FC = () => {
   const [selectedDayKey, setSelectedDayKey] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [selectedMode, setSelectedMode] = useState<AppointmentMode>('home');
+  const [isLoadingProvider, setIsLoadingProvider] = useState(true);
+  const [providerError, setProviderError] = useState<string | null>(null);
   const [screenError, setScreenError] = useState<string | null>(null);
   const {
     control,
@@ -66,9 +69,10 @@ export const BookingScreen: React.FC = () => {
     mode: 'onBlur',
   });
 
-  useEffect(() => {
-    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_BOOKING, 'Booking');
-    const loadProvider = async (): Promise<void> => {
+  const loadProvider = async (): Promise<void> => {
+    setIsLoadingProvider(true);
+    setProviderError(null);
+    try {
       const providerResult = await getProviderById(route.params.providerId);
       setProvider(providerResult);
       if (providerResult) {
@@ -89,7 +93,15 @@ export const BookingScreen: React.FC = () => {
           setProviderSlots(providerResult.nextSlots);
         }
       }
-    };
+    } catch (error) {
+      setProviderError(getErrorMessage(error, 'Impossible de charger ce prestataire.'));
+    } finally {
+      setIsLoadingProvider(false);
+    }
+  };
+
+  useEffect(() => {
+    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_BOOKING, 'Booking');
     void loadProvider();
   }, [route.params.providerId]);
 
@@ -153,19 +165,40 @@ export const BookingScreen: React.FC = () => {
       status: 'success',
     });
 
-    const draft = await createDraft({
-      providerId: provider.id,
-      slot: selectedSlot,
-      appointmentMode: selectedMode,
-      address: selectedMode === 'home' ? resolvedAddress : undefined,
-      note: values.note.trim() || undefined,
-    });
+    try {
+      const draft = await createDraft({
+        providerId: provider.id,
+        slot: selectedSlot,
+        appointmentMode: selectedMode,
+        address: selectedMode === 'home' ? resolvedAddress : undefined,
+        note: values.note.trim() || undefined,
+      });
 
-    navigation.navigate('Payment', { draftId: draft.id });
+      navigation.navigate('Payment', { draftId: draft.id });
+    } catch (error) {
+      setScreenError(getErrorMessage(error, 'Impossible de créer la réservation.'));
+      trackEvent(ANALYTICS_EVENTS.BOOKING_STEP_COMPLETED, {
+        screen_name: 'Booking',
+        step: 1,
+        status: 'error',
+        error_code: 'draft_creation_failed',
+      });
+    }
   };
 
-  if (!provider) {
+  if (isLoadingProvider) {
     return <Loader fullScreen text="Chargement de la réservation..." />;
+  }
+
+  if (providerError || !provider) {
+    return (
+      <EmptyState
+        title="Réservation indisponible"
+        description={providerError ?? 'Prestataire introuvable.'}
+        actionLabel="Réessayer"
+        onAction={() => void loadProvider()}
+      />
+    );
   }
 
   const canHome = provider.serviceModes.includes('home');
@@ -236,7 +269,8 @@ export const BookingScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dayList}
         >
-          {groupedSlots.map((day) => {
+          {groupedSlots.length > 0 ? (
+            groupedSlots.map((day) => {
             const isSelected = day.dayKey === selectedDayKey;
             return (
               <Pressable
@@ -258,7 +292,12 @@ export const BookingScreen: React.FC = () => {
                 </Text>
               </Pressable>
             );
-          })}
+            })
+          ) : (
+            <Text size="sm" color="secondary">
+              Aucun créneau disponible sur les 30 prochains jours.
+            </Text>
+          )}
         </ScrollView>
       </View>
 

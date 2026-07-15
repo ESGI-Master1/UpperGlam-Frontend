@@ -98,6 +98,9 @@ npm run web
 # One-time login
 npx eas-cli login
 
+# One-time project link, required before non-interactive cloud builds
+npx eas-cli init
+
 # Build installable APK (internal distribution)
 npm run android:apk
 ```
@@ -105,6 +108,32 @@ npm run android:apk
 At the end of the build, EAS provides a download URL for the `.apk` that you can send directly to testers.
 
 If `java` or `adb` is not detected right after installing Android/JDK tools on Windows, close and reopen your terminal once.
+
+## Demo Procedure
+
+### Client flow
+
+1. Log in with a client account.
+2. Search for a provider from the `Search` tab, then open the provider details page.
+3. Start a booking, select appointment mode, date, slot, address if home service, and optional note.
+4. Continue to payment, open the Mollie checkout, then return to the app and validate the payment.
+5. Open `Bookings` and verify the booking status, payment status, confirmation code, amount, address, and refund information if present.
+6. Open the booking detail screen, test a valid modification, then test cancellation.
+
+### Provider flow
+
+1. Log in with a provider account and switch to the provider experience.
+2. Check `Activity`, `Agenda`, `Ops`, and `Profile pro`.
+3. In `Agenda`, accept/reject/propose a slot for a booking and update recurring availability or closures.
+4. In `Profile pro`, update profile details, service zones, services catalog, and gallery.
+5. In `Ops`, verify clients, internal notes, revenue, payouts, transactions, and CSV exports.
+
+### Edge cases to test
+
+- Network disabled during provider search, booking creation, payment validation, booking update, and cancellation.
+- Payment refused or abandoned in Mollie, then retry from the payment screen.
+- Slot already taken or draft expired before payment validation.
+- Small Android screen and standard Android screen.
 
 ## Development
 
