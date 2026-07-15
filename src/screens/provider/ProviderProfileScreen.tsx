@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
   addProviderGalleryItemRequest,
   createProviderServiceRequest,
@@ -72,6 +73,7 @@ export const ProviderProfileScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_PROVIDER_PROFILE, 'ProviderProfile');
     void loadProfile();
   }, [loadProfile]);
 
@@ -96,6 +98,10 @@ export const ProviderProfileScreen: React.FC = () => {
         homeServiceZones: zones,
         priceFromCents: Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : null,
         serviceModes,
+      });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_PROFILE_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
       });
       hydrateForm(result);
       Alert.alert('Profil mis à jour', 'Les informations professionnelles sont enregistrées.');
@@ -123,6 +129,11 @@ export const ProviderProfileScreen: React.FC = () => {
         priceCents: Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) : 0,
         isActive: true,
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_SERVICE_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: 'created',
+      });
       setServiceName('');
       setServiceCategory('');
       setServiceDuration('45');
@@ -144,6 +155,11 @@ export const ProviderProfileScreen: React.FC = () => {
         priceCents: service.priceCents,
         isActive: !service.isActive,
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_SERVICE_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: service.isActive ? 'disabled' : 'enabled',
+      });
       setServices(await listProviderServicesRequest());
     } catch {
       Alert.alert('Modification impossible', 'La prestation est peut-être introuvable.');
@@ -153,6 +169,11 @@ export const ProviderProfileScreen: React.FC = () => {
   const deleteService = async (serviceId: string): Promise<void> => {
     try {
       await deleteProviderServiceRequest(serviceId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_SERVICE_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: 'deleted',
+      });
       setServices(await listProviderServicesRequest());
     } catch {
       Alert.alert('Suppression impossible', 'La prestation est peut-être introuvable.');
@@ -172,6 +193,11 @@ export const ProviderProfileScreen: React.FC = () => {
         mediaId,
         title: galleryTitle.trim() ? galleryTitle : null,
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_GALLERY_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: 'added',
+      });
       setGalleryMediaId('');
       setGalleryTitle('');
       setGalleryItems(await listProviderGalleryRequest());
@@ -185,6 +211,11 @@ export const ProviderProfileScreen: React.FC = () => {
   const deleteGalleryItem = async (itemId: string): Promise<void> => {
     try {
       await deleteProviderGalleryItemRequest(itemId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_GALLERY_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: 'deleted',
+      });
       setGalleryItems(await listProviderGalleryRequest());
     } catch {
       Alert.alert('Suppression impossible', 'Cette photo est peut-être introuvable.');
@@ -202,6 +233,11 @@ export const ProviderProfileScreen: React.FC = () => {
     nextItems.splice(nextIndex, 0, item);
     try {
       setGalleryItems(await reorderProviderGalleryRequest(nextItems.map((nextItem) => nextItem.id)));
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_GALLERY_UPDATED, {
+        screen_name: 'ProviderProfile',
+        status: 'success',
+        code: 'reordered',
+      });
     } catch {
       Alert.alert('Ordre non modifié', "Impossible d'enregistrer l'ordre des photos.");
     }

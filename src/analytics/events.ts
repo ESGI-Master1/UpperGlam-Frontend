@@ -11,6 +11,10 @@ export const ANALYTICS_EVENTS = {
   SCREEN_VIEW_PAYMENT: 'screen_view_payment',
   SCREEN_VIEW_BOOKINGS: 'screen_view_bookings',
   SCREEN_VIEW_PROFILE: 'screen_view_profile',
+  SCREEN_VIEW_PROVIDER_DASHBOARD: 'screen_view_provider_dashboard',
+  SCREEN_VIEW_PROVIDER_AGENDA: 'screen_view_provider_agenda',
+  SCREEN_VIEW_PROVIDER_OPERATIONS: 'screen_view_provider_operations',
+  SCREEN_VIEW_PROVIDER_PROFILE: 'screen_view_provider_profile',
 
   CTA_CLICK_LOGIN_START: 'cta_click_login_start',
   CTA_CLICK_REGISTER_START: 'cta_click_register_start',
@@ -50,6 +54,11 @@ export const ANALYTICS_EVENTS = {
   BOOKING_STEP_ABANDONED: 'booking_step_abandoned',
   BOOKING_UPDATED: 'booking_updated',
   BOOKING_CANCELLED: 'booking_cancelled',
+  PROVIDER_BOOKING_ACTION: 'provider_booking_action',
+  PROVIDER_AVAILABILITY_UPDATED: 'provider_availability_updated',
+  PROVIDER_PROFILE_UPDATED: 'provider_profile_updated',
+  PROVIDER_SERVICE_UPDATED: 'provider_service_updated',
+  PROVIDER_GALLERY_UPDATED: 'provider_gallery_updated',
 
   PAYMENT_INTENT_STARTED: 'payment_intent_started',
   PAYMENT_COMPLETED: 'payment_completed',

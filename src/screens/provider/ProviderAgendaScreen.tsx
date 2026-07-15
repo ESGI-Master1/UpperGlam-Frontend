@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
   acceptProviderBookingRequest,
   createProviderAvailabilityClosureRequest,
@@ -70,6 +71,7 @@ export const ProviderAgendaScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_PROVIDER_AGENDA, 'ProviderAgenda');
     void loadAgenda();
   }, [loadAgenda]);
 
@@ -112,6 +114,11 @@ export const ProviderAgendaScreen: React.FC = () => {
         slotStartAt: start.toISOString(),
         slotEndAt: end.toISOString(),
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'slot_created',
+      });
       await loadAgenda();
     } catch {
       Alert.alert(
@@ -137,6 +144,11 @@ export const ProviderAgendaScreen: React.FC = () => {
         startTime: ruleStartTime,
         endTime: ruleEndTime,
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'rule_created',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Règle non ajoutée', "Vérifie l'horaire ou évite les doublons.");
@@ -148,6 +160,11 @@ export const ProviderAgendaScreen: React.FC = () => {
   const deleteRule = async (ruleId: string): Promise<void> => {
     try {
       await deleteProviderAvailabilityRuleRequest(ruleId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'rule_deleted',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Suppression impossible', 'Cette règle horaire est introuvable.');
@@ -168,6 +185,11 @@ export const ProviderAgendaScreen: React.FC = () => {
         endsAt: endsAt.toISOString(),
         reason: 'Fermeture prestataire',
       });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'closure_created',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Fermeture non ajoutée', 'La période de fermeture est invalide.');
@@ -179,6 +201,11 @@ export const ProviderAgendaScreen: React.FC = () => {
   const deleteClosure = async (closureId: string): Promise<void> => {
     try {
       await deleteProviderAvailabilityClosureRequest(closureId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'closure_deleted',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Suppression impossible', 'Cette fermeture est introuvable.');
@@ -188,6 +215,11 @@ export const ProviderAgendaScreen: React.FC = () => {
   const deleteSlot = async (slotId: string): Promise<void> => {
     try {
       await deleteProviderAvailabilityRequest(slotId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'slot_deleted',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Suppression impossible', 'Ce créneau est peut-être déjà réservé.');
@@ -197,6 +229,11 @@ export const ProviderAgendaScreen: React.FC = () => {
   const acceptBooking = async (bookingId: string): Promise<void> => {
     try {
       await acceptProviderBookingRequest(bookingId);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_BOOKING_ACTION, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'accepted',
+      });
       await loadAgenda();
     } catch {
       Alert.alert('Action impossible', 'Cette réservation a peut-être déjà été traitée.');
@@ -212,6 +249,11 @@ export const ProviderAgendaScreen: React.FC = () => {
 
     try {
       await rejectProviderBookingRequest(bookingId, trimmedReason);
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_BOOKING_ACTION, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'rejected',
+      });
       setRejectingBookingId(null);
       setRejectReason('');
       await loadAgenda();
@@ -232,6 +274,11 @@ export const ProviderAgendaScreen: React.FC = () => {
         slotStartAt: start.toISOString(),
         slotEndAt: end.toISOString(),
         note: 'Nouveau créneau proposé par le prestataire.',
+      });
+      trackEvent(ANALYTICS_EVENTS.PROVIDER_BOOKING_ACTION, {
+        screen_name: 'ProviderAgenda',
+        status: 'success',
+        code: 'slot_proposed',
       });
       await loadAgenda();
     } catch {

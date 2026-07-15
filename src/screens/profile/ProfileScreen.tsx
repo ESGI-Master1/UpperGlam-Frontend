@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
+import { setAnalyticsConsent } from '@/analytics/posthog';
 import { getMeRequest, updateMyPreferencesRequest } from '@/api/users';
 import {
   getLastSearchParams,
@@ -64,6 +65,7 @@ export const ProfileScreen: React.FC = () => {
         setReminderEnabled(profile.preferences.reminderEnabled);
         setOffersEnabled(profile.preferences.offersEnabled);
         setAnalyticsEnabled(profile.preferences.analyticsEnabled);
+        setAnalyticsConsent(profile.preferences.analyticsEnabled);
       } catch {
         // no-op: preferences remain usable offline
       }
@@ -108,6 +110,7 @@ export const ProfileScreen: React.FC = () => {
 
   const onToggleAnalytics = (value: boolean): void => {
     setAnalyticsEnabled(value);
+    setAnalyticsConsent(value);
     void persistPreferences({
       reminderEnabled,
       offersEnabled,

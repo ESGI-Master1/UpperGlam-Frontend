@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { ANALYTICS_EVENTS, trackEvent, trackFormError, trackFormSubmit } from '@/analytics';
-import { identifyPostHogUser, resetPostHogUser } from '@/analytics/posthog';
+import { identifyPostHogUser, resetPostHogUser, setAnalyticsConsent } from '@/analytics/posthog';
 import { setAuthTokenProvider } from '@/api/client';
+import { getMeRequest } from '@/api/users';
 import { loginWithApi, registerWithApi } from '@/services/authService';
 import { AuthCredentials } from '@/types/auth';
 import { getErrorMessage } from '@/utils/errors';
@@ -66,9 +67,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const authResult = await loginWithApi(credentials);
       setToken(authResult.token);
+      setAuthTokenProvider(() => authResult.token);
       setUserEmail(authResult.userEmail);
       setUserRoles(authResult.roles);
       setActiveExperience(authResult.roles.includes('provider') ? 'provider' : 'client');
+      try {
+        const profile = await getMeRequest();
+        setAnalyticsConsent(profile.preferences?.analyticsEnabled === true);
+      } catch {
+        setAnalyticsConsent(false);
+      }
       identifyPostHogUser(authResult.userEmail, {
         email: authResult.userEmail,
       });
@@ -100,9 +108,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const authResult = await registerWithApi(credentials);
       setToken(authResult.token);
+      setAuthTokenProvider(() => authResult.token);
       setUserEmail(authResult.userEmail);
       setUserRoles(authResult.roles);
       setActiveExperience(authResult.roles.includes('provider') ? 'provider' : 'client');
+      try {
+        const profile = await getMeRequest();
+        setAnalyticsConsent(profile.preferences?.analyticsEnabled === true);
+      } catch {
+        setAnalyticsConsent(false);
+      }
       identifyPostHogUser(authResult.userEmail, {
         email: authResult.userEmail,
       });
@@ -137,6 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUserRoles([]);
     setActiveExperience('client');
     setErrorMessage(null);
+    setAnalyticsConsent(false);
     resetPostHogUser();
   }, []);
 

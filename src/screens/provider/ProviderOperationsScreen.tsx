@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ANALYTICS_EVENTS, trackScreenView } from '@/analytics';
 import {
   exportProviderCsvRequest,
   getProviderRevenueRequest,
@@ -44,6 +45,7 @@ export const ProviderOperationsScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_PROVIDER_OPERATIONS, 'ProviderOperations');
     void loadOperations();
   }, [loadOperations]);
 

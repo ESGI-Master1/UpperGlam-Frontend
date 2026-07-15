@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ANALYTICS_EVENTS, trackScreenView } from '@/analytics';
 import { getProviderDashboardRequest, getProviderRevenueRequest } from '@/api/providerDashboard';
 import { theme } from '@/theme';
 import { ProviderDashboard, ProviderRevenue } from '@/types/providerDashboard';
@@ -33,6 +34,7 @@ export const ProviderDashboardScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_PROVIDER_DASHBOARD, 'ProviderDashboard');
     void loadDashboard();
   }, [loadDashboard]);
 
