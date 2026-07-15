@@ -35,7 +35,7 @@ jobs:
               required_status_checks: {
                 strict: true,
                 checks: [
-                  { context: "Lint & Typecheck" },
+                  { context: "Lint, Typecheck & Test" },
                   { context: "PR Title Convention" },
                   { context: "Branch Name Convention" },
                   { context: "Commit Message Convention" }

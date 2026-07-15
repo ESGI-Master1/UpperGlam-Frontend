@@ -1,5 +1,7 @@
 # Upper Glam Mobile App
 
+[![CI](https://github.com/ESGI-Master1/UpperGlam-Frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/ESGI-Master1/UpperGlam-Frontend/actions/workflows/ci.yml)
+
 React Native mobile application for Upper Glam, built with Expo and TypeScript.
 
 ## Tech Stack

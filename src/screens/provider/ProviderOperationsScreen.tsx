@@ -37,7 +37,7 @@ export const ProviderOperationsScreen: React.FC = () => {
         )
       );
     } catch {
-      setErrorMessage("Impossible de charger les opérations prestataire.");
+      setErrorMessage('Impossible de charger les opérations prestataire.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -187,12 +187,18 @@ export const ProviderOperationsScreen: React.FC = () => {
                   </View>
                   <TextInput
                     value={notes[customerId] ?? ''}
-                    onChangeText={(value) => setNotes((current) => ({ ...current, [customerId]: value }))}
+                    onChangeText={(value) =>
+                      setNotes((current) => ({ ...current, [customerId]: value }))
+                    }
                     placeholder="Note interne"
                     multiline
                     style={styles.noteInput}
                   />
-                  <Button title="Enregistrer la note" size="sm" onPress={() => void saveNote(customerId)} />
+                  <Button
+                    title="Enregistrer la note"
+                    size="sm"
+                    onPress={() => void saveNote(customerId)}
+                  />
                 </View>
               );
             })

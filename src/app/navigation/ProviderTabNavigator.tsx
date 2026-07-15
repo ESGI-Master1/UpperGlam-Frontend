@@ -47,11 +47,7 @@ export const ProviderTabNavigator: React.FC = () => {
 
           if (route.name === 'ProviderOperations') {
             return (
-              <Icon
-                name={focused ? 'chart-box' : 'chart-box-outline'}
-                size={size}
-                color={color}
-              />
+              <Icon name={focused ? 'chart-box' : 'chart-box-outline'} size={size} color={color} />
             );
           }
 

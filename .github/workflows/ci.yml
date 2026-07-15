@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   quality-gate:
-    name: Lint & Typecheck
+    name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -38,11 +38,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run type-check
+      - name: Workflow check
+        run: npm run workflow:check
 
       - name: Format check
         run: npx prettier --check "**/*.{ts,tsx,json,md}"

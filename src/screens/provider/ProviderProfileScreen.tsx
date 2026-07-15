@@ -202,7 +202,7 @@ export const ProviderProfileScreen: React.FC = () => {
       setGalleryTitle('');
       setGalleryItems(await listProviderGalleryRequest());
     } catch {
-      Alert.alert('Photo non ajoutée', "Le média doit appartenir au compte prestataire.");
+      Alert.alert('Photo non ajoutée', 'Le média doit appartenir au compte prestataire.');
     } finally {
       setIsSavingGallery(false);
     }
@@ -232,7 +232,9 @@ export const ProviderProfileScreen: React.FC = () => {
     const [item] = nextItems.splice(index, 1);
     nextItems.splice(nextIndex, 0, item);
     try {
-      setGalleryItems(await reorderProviderGalleryRequest(nextItems.map((nextItem) => nextItem.id)));
+      setGalleryItems(
+        await reorderProviderGalleryRequest(nextItems.map((nextItem) => nextItem.id))
+      );
       trackEvent(ANALYTICS_EVENTS.PROVIDER_GALLERY_UPDATED, {
         screen_name: 'ProviderProfile',
         status: 'success',
@@ -388,11 +390,7 @@ export const ProviderProfileScreen: React.FC = () => {
             Catalogue prestations
           </Text>
           <Input label="Nom prestation" value={serviceName} onChangeText={setServiceName} />
-          <Input
-            label="Catégorie"
-            value={serviceCategory}
-            onChangeText={setServiceCategory}
-          />
+          <Input label="Catégorie" value={serviceCategory} onChangeText={setServiceCategory} />
           <View style={styles.catalogInputs}>
             <Input
               label="Durée min."

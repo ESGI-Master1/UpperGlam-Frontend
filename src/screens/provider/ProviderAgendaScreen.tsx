@@ -451,7 +451,12 @@ const AvailabilitySettings: React.FC<{
                 {weekdayLabels[rule.weekday] ?? `J${rule.weekday}`} · {rule.startTime}-
                 {rule.endTime}
               </Text>
-              <Button title="Supprimer" size="sm" variant="outline" onPress={() => onDeleteRule(rule.id)} />
+              <Button
+                title="Supprimer"
+                size="sm"
+                variant="outline"
+                onPress={() => onDeleteRule(rule.id)}
+              />
             </View>
           ))}
         </View>

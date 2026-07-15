@@ -117,10 +117,7 @@ export const listProviderAvailabilityRequest = async (query?: {
 }): Promise<ProviderAvailabilitySchedule> => {
   const response = await apiClient.get<
     ApiSuccessResponse<ProviderAvailabilitySchedule | ProviderAvailabilitySlot[]>
-  >(
-    '/providers/me/availability',
-    { params: query }
-  );
+  >('/providers/me/availability', { params: query });
   if (Array.isArray(response.data)) {
     return { slots: response.data, rules: [], closures: [] };
   }
@@ -275,7 +272,11 @@ export const updateProviderCustomerNoteRequest = async (
   note: string | null
 ): Promise<{ customerUserId: string; note: string | null; noteUpdatedAt: string | null }> => {
   const response = await apiClient.put<
-    ApiSuccessResponse<{ customerUserId: string; note: string | null; noteUpdatedAt: string | null }>
+    ApiSuccessResponse<{
+      customerUserId: string;
+      note: string | null;
+      noteUpdatedAt: string | null;
+    }>
   >(`/providers/me/customers/${customerUserId}/note`, { note });
   return response.data;
 };

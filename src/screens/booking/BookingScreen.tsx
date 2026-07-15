@@ -271,27 +271,27 @@ export const BookingScreen: React.FC = () => {
         >
           {groupedSlots.length > 0 ? (
             groupedSlots.map((day) => {
-            const isSelected = day.dayKey === selectedDayKey;
-            return (
-              <Pressable
-                key={day.dayKey}
-                onPress={() => {
-                  setSelectedDayKey(day.dayKey);
-                  setSelectedSlot(day.slots[0]);
-                }}
-                style={[
-                  styles.dayPill,
-                  isSelected ? styles.dayPillSelected : styles.dayPillDefault,
-                ]}
-              >
-                <Text size="xs" color={isSelected ? 'primary' : 'secondary'}>
-                  {day.dayLabel}
-                </Text>
-                <Text size="sm" weight="semibold" color={isSelected ? 'primary' : 'secondary'}>
-                  {day.dateLabel}
-                </Text>
-              </Pressable>
-            );
+              const isSelected = day.dayKey === selectedDayKey;
+              return (
+                <Pressable
+                  key={day.dayKey}
+                  onPress={() => {
+                    setSelectedDayKey(day.dayKey);
+                    setSelectedSlot(day.slots[0]);
+                  }}
+                  style={[
+                    styles.dayPill,
+                    isSelected ? styles.dayPillSelected : styles.dayPillDefault,
+                  ]}
+                >
+                  <Text size="xs" color={isSelected ? 'primary' : 'secondary'}>
+                    {day.dayLabel}
+                  </Text>
+                  <Text size="sm" weight="semibold" color={isSelected ? 'primary' : 'secondary'}>
+                    {day.dateLabel}
+                  </Text>
+                </Pressable>
+              );
             })
           ) : (
             <Text size="sm" color="secondary">
