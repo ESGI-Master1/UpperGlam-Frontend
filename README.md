@@ -75,6 +75,8 @@ Copy `.env.example` to `.env` and configure:
 cp .env.example .env
 ```
 
+Pour Android Emulator, utiliser `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3333`. Pour un appareil physique, utiliser l'IP LAN de la machine qui execute l'API. La matrice local/preview/production est documentee dans le guide infrastructure du backend.
+
 ### Run on Android (without Expo Go)
 
 ```bash
@@ -157,7 +159,7 @@ npm run type-check
 
 ### CI & Branch Protection
 
-- `CI` (`.github/workflows/ci.yml`): lint + type-check + prettier check
+- `CI` (`.github/workflows/ci.yml`): lint + type-check + tests + prettier check
 - `PR Conventions` (`.github/workflows/pr-conventions.yml`): semantic PR title + branch/commit naming conventions
 - `Dependency Audit` (`.github/workflows/dependency-audit.yml`): `npm audit` sur deps de prod (PR lockfile + weekly)
 
