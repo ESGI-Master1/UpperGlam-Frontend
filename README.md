@@ -86,7 +86,14 @@ npm run android:check
 # Build + install native app on emulator (no Expo Go)
 npm run android
 
-# Next launches (after app is already installed)
+# Telephone physique deja equipe de l'app : verifie ADB, configure l'USB,
+# demarre Metro sur le LAN et ouvre automatiquement Upper Glam
+npm run android:device
+
+# Reinstaller l'APK debug local deja compile, sans relancer Gradle
+npm run android:install-apk
+
+# Metro seul (emulateur ou lancement manuel du development client)
 npm run android:dev-client
 
 # Run on iOS

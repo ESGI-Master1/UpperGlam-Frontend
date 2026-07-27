@@ -9,6 +9,8 @@
     "android:dev": "node scripts/run-android.js",
     "android:dev:clean": "node scripts/run-android.js --no-build-cache",
     "android:dev-client": "expo start --dev-client",
+    "android:device": "node scripts/run-android-device.js",
+    "android:install-apk": "node scripts/install-android-apk.js",
     "android:apk": "npx eas-cli build --platform android --profile preview",
     "android:aab": "npx eas-cli build --platform android --profile production",
     "prebuild": "npx expo prebuild --clean",
