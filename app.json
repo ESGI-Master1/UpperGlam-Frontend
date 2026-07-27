@@ -38,6 +38,12 @@
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ddf8b1f7-4ec7-4a7e-8dfa-7b9429567970"
+      }
+    },
+    "owner": "streamwidget"
   }
 }
