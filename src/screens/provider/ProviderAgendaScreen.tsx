@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
   acceptProviderBookingRequest,
@@ -23,14 +31,30 @@ import {
 } from '@/types/providerDashboard';
 import { formatDateTime, formatPrice } from '@/utils/format';
 import { Button, Card, EmptyState, Loader, Text } from '@/ui';
+import {
+  ProviderCalendar,
+  startOfLocalMonth,
+  toLocalDateKey,
+} from './components/ProviderCalendar';
+import { SlotComposerModal } from './components/SlotComposerModal';
 
 type AgendaItem =
   | { type: 'booking'; id: string; booking: ProviderBooking }
   | { type: 'slot'; id: string; slot: ProviderAvailabilitySlot };
 
 const centsToPrice = (cents: number): string => formatPrice(cents / 100);
+const formatTime = (isoDate: string): string =>
+  new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(new Date(isoDate))
+    .replace(' h ', ':');
 
 export const ProviderAgendaScreen: React.FC = () => {
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfLocalMonth(new Date()));
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [slots, setSlots] = useState<ProviderAvailabilitySlot[]>([]);
   const [rules, setRules] = useState<ProviderAvailabilityRule[]>([]);
@@ -40,6 +64,7 @@ export const ProviderAgendaScreen: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isCreatingRule, setIsCreatingRule] = useState(false);
   const [isCreatingClosure, setIsCreatingClosure] = useState(false);
+  const [isSlotComposerOpen, setIsSlotComposerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rejectingBookingId, setRejectingBookingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -49,13 +74,15 @@ export const ProviderAgendaScreen: React.FC = () => {
 
   const loadAgenda = useCallback(async (): Promise<void> => {
     setErrorMessage(null);
-    const from = new Date();
-    const to = new Date();
-    to.setDate(to.getDate() + 30);
+    const from = new Date(calendarMonth);
+    from.setDate(from.getDate() - 7);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 2, 7);
+    to.setHours(23, 59, 59, 999);
 
     try {
       const [bookingResult, slotResult] = await Promise.all([
-        listProviderBookingsRequest({ limit: 50 }),
+        listProviderBookingsRequest({ limit: 100 }),
         listProviderAvailabilityRequest({ from: from.toISOString(), to: to.toISOString() }),
       ]);
       setBookings(bookingResult.bookings);
@@ -68,7 +95,7 @@ export const ProviderAgendaScreen: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [calendarMonth]);
 
   useEffect(() => {
     trackScreenView(ANALYTICS_EVENTS.SCREEN_VIEW_PROVIDER_AGENDA, 'ProviderAgenda');
@@ -96,35 +123,93 @@ export const ProviderAgendaScreen: React.FC = () => {
     });
   }, [bookings, slots]);
 
+  const eventCounts = useMemo<Record<string, number>>(() => {
+    return items.reduce<Record<string, number>>((counts, item) => {
+      const startsAt = item.type === 'booking' ? item.booking.slotStartAt : item.slot.slotStartAt;
+      const dateKey = toLocalDateKey(startsAt);
+      counts[dateKey] = (counts[dateKey] ?? 0) + 1;
+      return counts;
+    }, {});
+  }, [items]);
+
+  const selectedDateKey = toLocalDateKey(selectedDate);
+  const selectedItems = useMemo(() => {
+    return items.filter((item) => {
+      const startsAt = item.type === 'booking' ? item.booking.slotStartAt : item.slot.slotStartAt;
+      return toLocalDateKey(startsAt) === selectedDateKey;
+    });
+  }, [items, selectedDateKey]);
+
+  const occupiedStartTimes = useMemo(() => {
+    return selectedItems.map((item) => {
+      const startsAt = item.type === 'booking' ? item.booking.slotStartAt : item.slot.slotStartAt;
+      return new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+        .format(new Date(startsAt))
+        .replace(' h ', ':');
+    });
+  }, [selectedItems]);
+
+  const selectedDateLabel = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(selectedDate);
+
   const onRefresh = (): void => {
     setIsRefreshing(true);
     void loadAgenda();
   };
 
-  const createNextSlot = async (): Promise<void> => {
+  const createSlots = async (
+    startTimes: string[],
+    durationMinutes: number
+  ): Promise<void> => {
     setIsCreating(true);
-    const start = new Date();
-    start.setDate(start.getDate() + 1);
-    start.setHours(9, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(10, 0, 0, 0);
+    let createdCount = 0;
+
+    for (const startTime of startTimes) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const start = new Date(selectedDate);
+      start.setHours(hours, minutes, 0, 0);
+      const end = new Date(start.getTime() + durationMinutes * 60_000);
+
+      try {
+        await createProviderAvailabilityRequest({
+          slotStartAt: start.toISOString(),
+          slotEndAt: end.toISOString(),
+        });
+        createdCount += 1;
+      } catch {
+        // Continue so one duplicate does not prevent the other selected slots.
+      }
+    }
 
     try {
-      await createProviderAvailabilityRequest({
-        slotStartAt: start.toISOString(),
-        slotEndAt: end.toISOString(),
-      });
+      if (createdCount === 0) {
+        Alert.alert(
+          'Aucun créneau ajouté',
+          'Les horaires sont peut-être déjà occupés ou la date est passée.'
+        );
+        return;
+      }
+
       trackEvent(ANALYTICS_EVENTS.PROVIDER_AVAILABILITY_UPDATED, {
         screen_name: 'ProviderAgenda',
         status: 'success',
-        code: 'slot_created',
+        code: 'slots_created',
       });
       await loadAgenda();
-    } catch {
-      Alert.alert(
-        'Créneau non ajouté',
-        'Le créneau existe peut-être déjà ou la date est invalide.'
-      );
+      setIsSlotComposerOpen(false);
+      if (createdCount < startTimes.length) {
+        Alert.alert(
+          'Ajout partiel',
+          `${createdCount} créneau${createdCount > 1 ? 'x ont' : ' a'} été ajouté${createdCount > 1 ? 's' : ''}. Les autres horaires étaient indisponibles.`
+        );
+      }
     } finally {
       setIsCreating(false);
     }
@@ -173,8 +258,7 @@ export const ProviderAgendaScreen: React.FC = () => {
 
   const createClosure = async (): Promise<void> => {
     setIsCreatingClosure(true);
-    const startsAt = new Date();
-    startsAt.setDate(startsAt.getDate() + 1);
+    const startsAt = new Date(selectedDate);
     startsAt.setHours(0, 0, 0, 0);
     const endsAt = new Date(startsAt);
     endsAt.setHours(23, 59, 0, 0);
@@ -296,72 +380,143 @@ export const ProviderAgendaScreen: React.FC = () => {
         <Text variant="heading" size="xl" weight="bold">
           Agenda
         </Text>
-        <Button
-          title="Ajouter demain 9h"
-          size="sm"
-          onPress={createNextSlot}
-          loading={isCreating}
-          disabled={isCreating}
-        />
+        <Text size="sm" color="secondary">
+          Organise tes rendez-vous et tes disponibilités.
+        </Text>
       </View>
 
       {errorMessage ? (
         <EmptyState title="Agenda indisponible" description={errorMessage} />
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-          ListHeaderComponent={
-            <AvailabilitySettings
-              closures={closures}
-              isCreatingClosure={isCreatingClosure}
-              isCreatingRule={isCreatingRule}
-              onCreateClosure={() => void createClosure()}
-              onCreateRule={() => void createRule()}
-              onDeleteClosure={(closureId) => void deleteClosure(closureId)}
-              onDeleteRule={(ruleId) => void deleteRule(ruleId)}
-              ruleEndTime={ruleEndTime}
-              ruleStartTime={ruleStartTime}
-              ruleWeekday={ruleWeekday}
-              rules={rules}
-              setRuleEndTime={setRuleEndTime}
-              setRuleStartTime={setRuleStartTime}
-              setRuleWeekday={setRuleWeekday}
-            />
-          }
-          renderItem={({ item }) =>
-            item.type === 'booking' ? (
-              <BookingRow
-                booking={item.booking}
-                onAccept={() => void acceptBooking(item.booking.id)}
-                onProposeSlot={() => void proposeSlot(item.booking.id)}
-                onReject={() => {
-                  setRejectingBookingId(item.booking.id);
-                  setRejectReason('');
-                }}
-                onRejectCancel={() => {
-                  setRejectingBookingId(null);
-                  setRejectReason('');
-                }}
-                onRejectConfirm={() => void rejectBooking(item.booking.id, rejectReason)}
-                rejectReason={rejectingBookingId === item.booking.id ? rejectReason : ''}
-                rejecting={rejectingBookingId === item.booking.id}
-                setRejectReason={setRejectReason}
+          showsVerticalScrollIndicator={false}
+        >
+          <ProviderCalendar
+            eventCounts={eventCounts}
+            month={calendarMonth}
+            onMonthChange={(month) => {
+              setCalendarMonth(month);
+              setSelectedDate(month);
+            }}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              if (
+                date.getMonth() !== calendarMonth.getMonth() ||
+                date.getFullYear() !== calendarMonth.getFullYear()
+              ) {
+                setCalendarMonth(startOfLocalMonth(date));
+              }
+            }}
+            selectedDate={selectedDate}
+          />
+
+          <View style={styles.daySection}>
+            <View style={styles.dayHeader}>
+              <View style={styles.dayHeaderText}>
+                <Text size="lg" weight="bold">
+                  {selectedDateLabel.charAt(0).toUpperCase() + selectedDateLabel.slice(1)}
+                </Text>
+                <Text size="xs" color="secondary">
+                  {selectedItems.length === 0
+                    ? 'Aucun rendez-vous prévu'
+                    : `${selectedItems.length} élément${selectedItems.length > 1 ? 's' : ''} dans la journée`}
+                </Text>
+              </View>
+              <Button
+                title="+ Créneau"
+                size="sm"
+                onPress={() => setIsSlotComposerOpen(true)}
               />
+            </View>
+
+            {selectedItems.length === 0 ? (
+              <Card style={styles.emptyDayCard}>
+                <Text size="sm" color="secondary">
+                  Cette journée est libre. Ajoute un ou plusieurs créneaux en quelques secondes.
+                </Text>
+                <Button
+                  title="Ajouter des disponibilités"
+                  size="sm"
+                  variant="outline"
+                  onPress={() => setIsSlotComposerOpen(true)}
+                />
+              </Card>
             ) : (
-              <SlotRow slot={item.slot} onDelete={() => void deleteSlot(item.slot.id)} />
-            )
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucun élément"
-              description="Ajoute des disponibilités pour recevoir des réservations."
-            />
-          }
-        />
+              <View style={styles.dayItems}>
+                {selectedItems.map((item) =>
+                  item.type === 'booking' ? (
+                    <BookingRow
+                      key={item.id}
+                      booking={item.booking}
+                      onAccept={() => void acceptBooking(item.booking.id)}
+                      onProposeSlot={() => void proposeSlot(item.booking.id)}
+                      onReject={() => {
+                        setRejectingBookingId(item.booking.id);
+                        setRejectReason('');
+                      }}
+                      onRejectCancel={() => {
+                        setRejectingBookingId(null);
+                        setRejectReason('');
+                      }}
+                      onRejectConfirm={() => void rejectBooking(item.booking.id, rejectReason)}
+                      rejectReason={rejectingBookingId === item.booking.id ? rejectReason : ''}
+                      rejecting={rejectingBookingId === item.booking.id}
+                      setRejectReason={setRejectReason}
+                    />
+                  ) : (
+                    <SlotRow
+                      key={item.id}
+                      slot={item.slot}
+                      onDelete={() => void deleteSlot(item.slot.id)}
+                    />
+                  )
+                )}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.settingsTitle}>
+            <Text size="lg" weight="bold">
+              Réglages de disponibilité
+            </Text>
+            <Text size="xs" color="secondary">
+              Configure les habitudes et les absences exceptionnelles.
+            </Text>
+          </View>
+
+          <AvailabilitySettings
+            closures={closures}
+            isCreatingClosure={isCreatingClosure}
+            isCreatingRule={isCreatingRule}
+            onCreateClosure={() => void createClosure()}
+            onCreateRule={() => void createRule()}
+            onDeleteClosure={(closureId) => void deleteClosure(closureId)}
+            onDeleteRule={(ruleId) => void deleteRule(ruleId)}
+            ruleEndTime={ruleEndTime}
+            ruleStartTime={ruleStartTime}
+            ruleWeekday={ruleWeekday}
+            rules={rules}
+            setRuleEndTime={setRuleEndTime}
+            setRuleStartTime={setRuleStartTime}
+            setRuleWeekday={setRuleWeekday}
+          />
+        </ScrollView>
       )}
+
+      <SlotComposerModal
+        date={selectedDate}
+        isSubmitting={isCreating}
+        occupiedStartTimes={occupiedStartTimes}
+        onClose={() => {
+          if (!isCreating) {
+            setIsSlotComposerOpen(false);
+          }
+        }}
+        onSubmit={createSlots}
+        visible={isSlotComposerOpen}
+      />
     </View>
   );
 };
@@ -374,6 +529,15 @@ const providerStatusLabel: Record<ProviderBooking['providerStatus'], string> = {
 };
 
 const weekdayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const weekdayOptions = [
+  { value: '1', label: 'L' },
+  { value: '2', label: 'M' },
+  { value: '3', label: 'M' },
+  { value: '4', label: 'J' },
+  { value: '5', label: 'V' },
+  { value: '6', label: 'S' },
+  { value: '0', label: 'D' },
+];
 
 const AvailabilitySettings: React.FC<{
   closures: ProviderAvailabilityClosure[];
@@ -411,26 +575,48 @@ const AvailabilitySettings: React.FC<{
       <Text size="md" weight="semibold">
         Horaires récurrents
       </Text>
+      <Text size="xs" color="secondary">
+        Choisis un jour et une plage horaire habituelle.
+      </Text>
+      <View style={styles.weekdayPicker}>
+        {weekdayOptions.map((option) => {
+          const isSelected = ruleWeekday === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => setRuleWeekday(option.value)}
+              style={[styles.weekdayChip, isSelected && styles.weekdayChipSelected]}
+            >
+              <Text size="sm" weight={isSelected ? 'bold' : 'regular'}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <View style={styles.ruleForm}>
-        <TextInput
-          value={ruleWeekday}
-          onChangeText={setRuleWeekday}
-          keyboardType="number-pad"
-          placeholder="Jour 0-6"
-          style={[styles.input, styles.dayInput]}
-        />
-        <TextInput
-          value={ruleStartTime}
-          onChangeText={setRuleStartTime}
-          placeholder="09:00"
-          style={styles.input}
-        />
-        <TextInput
-          value={ruleEndTime}
-          onChangeText={setRuleEndTime}
-          placeholder="18:00"
-          style={styles.input}
-        />
+        <View style={styles.timeField}>
+          <Text size="xs" color="secondary">
+            Début
+          </Text>
+          <TextInput
+            value={ruleStartTime}
+            onChangeText={setRuleStartTime}
+            placeholder="09:00"
+            style={styles.input}
+          />
+        </View>
+        <View style={styles.timeField}>
+          <Text size="xs" color="secondary">
+            Fin
+          </Text>
+          <TextInput
+            value={ruleEndTime}
+            onChangeText={setRuleEndTime}
+            placeholder="18:00"
+            style={styles.input}
+          />
+        </View>
         <Button
           title="Ajouter"
           size="sm"
@@ -474,7 +660,7 @@ const AvailabilitySettings: React.FC<{
           </Text>
         </View>
         <Button
-          title="Fermer demain"
+          title="Fermer ce jour"
           size="sm"
           variant="outline"
           onPress={onCreateClosure}
@@ -538,7 +724,7 @@ const BookingRow: React.FC<{
       <View style={styles.row}>
         <View style={styles.rowText}>
           <Text size="sm" weight="semibold">
-            {formatDateTime(booking.slotStartAt)}
+            {formatTime(booking.slotStartAt)} – {formatTime(booking.slotEndAt)}
           </Text>
           <Text size="xs" color="secondary">
             {customerName || booking.customer.email || 'Client'} ·{' '}
@@ -606,7 +792,7 @@ const SlotRow: React.FC<{ slot: ProviderAvailabilitySlot; onDelete: () => void }
     <View style={styles.row}>
       <View style={styles.rowText}>
         <Text size="sm" weight="semibold">
-          {formatDateTime(slot.slotStartAt)}
+          {formatTime(slot.slotStartAt)} – {formatTime(slot.slotEndAt)}
         </Text>
         <Text size="xs" color="secondary">
           Créneau libre
@@ -625,12 +811,36 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.lg,
   },
   header: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   listContent: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
+  },
+  daySection: {
+    gap: theme.spacing.md,
+  },
+  dayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  dayHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  dayItems: {
+    gap: theme.spacing.sm,
+  },
+  emptyDayCard: {
+    gap: theme.spacing.md,
+    alignItems: 'flex-start',
+  },
+  settingsTitle: {
+    gap: 2,
+    marginTop: theme.spacing.sm,
   },
   settings: {
     gap: theme.spacing.sm,
@@ -642,21 +852,39 @@ const styles = StyleSheet.create({
   ruleForm: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: theme.spacing.sm,
   },
-  input: {
-    minWidth: 78,
+  weekdayPicker: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  weekdayChip: {
+    flex: 1,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.surface,
+    borderColor: theme.colors.background,
+    backgroundColor: theme.colors.background,
+  },
+  weekdayChipSelected: {
+    borderColor: theme.colors.accentChampagne,
+    backgroundColor: '#2A2418',
+  },
+  timeField: {
+    gap: theme.spacing.xs,
+  },
+  input: {
+    minWidth: 92,
+    borderWidth: 1,
+    borderColor: theme.colors.background,
     borderRadius: 8,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     color: theme.colors.primaryText,
-    backgroundColor: theme.colors.surface,
-  },
-  dayInput: {
-    minWidth: 92,
+    backgroundColor: theme.colors.background,
   },
   compactList: {
     gap: theme.spacing.xs,

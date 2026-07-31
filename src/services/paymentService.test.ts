@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPaymentIntentRequest } from '@/api/payments';
 import {
   createMollieCheckout,
-  getAvailableWalletMethods,
+  getAvailablePaymentMethods,
   openMollieCheckout,
   toPaymentApiId,
 } from './paymentService';
@@ -37,15 +37,15 @@ describe('paymentService', () => {
     expect(toPaymentApiId('draft_ext_42')).toBe('draft_ext_42');
   });
 
-  it('returns the wallet method supported by the current platform', () => {
+  it('always offers card and adds the wallet supported by the current platform', () => {
     Platform.OS = 'ios';
-    expect(getAvailableWalletMethods()).toEqual(['apple_pay']);
+    expect(getAvailablePaymentMethods()).toEqual(['card', 'apple_pay']);
 
     Platform.OS = 'android';
-    expect(getAvailableWalletMethods()).toEqual(['google_pay']);
+    expect(getAvailablePaymentMethods()).toEqual(['card', 'google_pay']);
 
     Platform.OS = 'web';
-    expect(getAvailableWalletMethods()).toEqual([]);
+    expect(getAvailablePaymentMethods()).toEqual(['card']);
   });
 
   it('creates a Mollie checkout with idempotency and rejects missing checkout URLs', async () => {
@@ -61,14 +61,14 @@ describe('paymentService', () => {
     await expect(
       createMollieCheckout({
         draftId: '42',
-        method: 'apple_pay',
+        method: 'card',
         idempotencyKey: 'idem_123',
       })
     ).resolves.toMatchObject({ paymentId: 'tr_test' });
 
     expect(createPaymentIntentMock).toHaveBeenCalledWith({
       draftId: 42,
-      method: 'apple_pay',
+      method: 'card',
       idempotencyKey: 'idem_123',
     });
 
@@ -84,7 +84,7 @@ describe('paymentService', () => {
     await expect(
       createMollieCheckout({
         draftId: '42',
-        method: 'apple_pay',
+        method: 'card',
         idempotencyKey: 'idem_124',
       })
     ).rejects.toThrow('URL de paiement Mollie manquante');

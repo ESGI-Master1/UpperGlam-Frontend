@@ -1,6 +1,6 @@
 import type { AxiosError } from 'axios';
 import { describe, expect, it } from 'vitest';
-import { getErrorMessage } from './errors';
+import { getErrorCode, getErrorMessage } from './errors';
 
 const axiosError = (data: unknown): AxiosError => {
   return {
@@ -42,6 +42,19 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(axiosError({ detail: 'Timeout PSP' }), 'Erreur inconnue')).toBe(
       'Timeout PSP'
     );
+  });
+
+  it('extracts nested API error codes for recoverable payment states', () => {
+    expect(
+      getErrorCode(
+        axiosError({
+          error: {
+            code: 'PAYMENT_PENDING',
+            message: 'Confirmation en cours',
+          },
+        })
+      )
+    ).toBe('PAYMENT_PENDING');
   });
 
   it('uses the fallback for empty or unknown errors', () => {

@@ -14,11 +14,16 @@ import { ProviderReviewsScreen } from '@/screens/search/ProviderReviewsScreen';
 import { useAuth } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
+import { Loader } from '@/ui';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated, isProviderExperience } = useAuth();
+  const { isAuthenticated, isProviderExperience, isHydrating } = useAuth();
+
+  if (isHydrating) {
+    return <Loader fullScreen text="Restauration de la session..." />;
+  }
 
   return (
     <Stack.Navigator

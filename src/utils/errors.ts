@@ -35,3 +35,13 @@ export const getErrorMessage = (error: unknown, fallback: string): string => {
 
   return fallback;
 };
+
+export const getErrorCode = (error: unknown): string | null => {
+  if (!axios.isAxiosError(error)) {
+    return null;
+  }
+
+  const responseData = toRecord(error.response?.data);
+  const nestedError = toRecord(responseData?.error);
+  return readString(nestedError?.code) ?? readString(responseData?.code);
+};

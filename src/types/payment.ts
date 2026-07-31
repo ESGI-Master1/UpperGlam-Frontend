@@ -1,4 +1,4 @@
-export type PaymentMethod = 'apple_pay' | 'google_pay';
+export type PaymentMethod = 'card' | 'apple_pay' | 'google_pay';
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
 
 export interface PaymentIntentInput {

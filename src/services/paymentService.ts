@@ -7,16 +7,16 @@ export const toPaymentApiId = (value: string): number | string => {
   return Number.isInteger(numericId) ? numericId : value;
 };
 
-export const getAvailableWalletMethods = (): PaymentMethod[] => {
+export const getAvailablePaymentMethods = (): PaymentMethod[] => {
   if (Platform.OS === 'ios') {
-    return ['apple_pay'];
+    return ['card', 'apple_pay'];
   }
 
   if (Platform.OS === 'android') {
-    return ['google_pay'];
+    return ['card', 'google_pay'];
   }
 
-  return [];
+  return ['card'];
 };
 
 export const createMollieCheckout = async (input: PaymentIntentInput) => {

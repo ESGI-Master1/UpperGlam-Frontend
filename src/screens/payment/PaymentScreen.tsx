@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { StyleSheet, View } from 'react-native';
+import { AppState, Linking, StyleSheet, View } from 'react-native';
+import { env } from '@/app/config/env';
 import { ANALYTICS_EVENTS, trackEvent, trackScreenView } from '@/analytics';
 import {
   createMollieCheckout,
-  getAvailableWalletMethods,
+  getAvailablePaymentMethods,
   openMollieCheckout,
 } from '@/services/paymentService';
 import { useBookings } from '@/store';
@@ -15,7 +16,7 @@ import { PaymentMethod } from '@/types/payment';
 import { Booking } from '@/types/booking';
 import { Button, Card, Container, Text } from '@/ui';
 import { formatDateTime, formatPrice } from '@/utils/format';
-import { getErrorMessage } from '@/utils/errors';
+import { getErrorCode, getErrorMessage } from '@/utils/errors';
 
 type PaymentRoute = RouteProp<RootStackParamList, 'Payment'>;
 type PaymentNavigation = StackNavigationProp<RootStackParamList, 'Payment'>;
@@ -26,12 +27,24 @@ interface PaymentOption {
 }
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  card: 'Carte bancaire',
   apple_pay: 'Apple Pay',
   google_pay: 'Google Pay',
 };
 
+const PAYMENT_CONFIRMATION_ATTEMPTS = 6;
+const PAYMENT_CONFIRMATION_DELAY_MS = 1500;
+
 const createPaymentAttemptKey = (draftId: string): string => {
   return `payment:${draftId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+};
+
+const wait = (durationMs: number): Promise<void> => {
+  return new Promise((resolve) => setTimeout(resolve, durationMs));
+};
+
+const isMollieReturnUrl = (url: string): boolean => {
+  return url.startsWith(env.mollieReturnUrl);
 };
 
 export const PaymentScreen: React.FC = () => {
@@ -41,25 +54,27 @@ export const PaymentScreen: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
-    () => getAvailableWalletMethods()[0] ?? null
+    () => getAvailablePaymentMethods()[0] ?? null
   );
   const [paymentAttemptKey, setPaymentAttemptKey] = useState(() =>
     createPaymentAttemptKey(route.params.draftId)
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const confirmationInProgressRef = useRef(false);
+  const checkoutWasBackgroundedRef = useRef(false);
 
   const draft = useMemo(
     () => getDraftById(route.params.draftId),
     [getDraftById, route.params.draftId]
   );
-  const walletMethods = useMemo(() => getAvailableWalletMethods(), []);
+  const availableMethods = useMemo(() => getAvailablePaymentMethods(), []);
   const paymentOptions = useMemo<PaymentOption[]>(() => {
-    return walletMethods.map((method) => ({
+    return availableMethods.map((method) => ({
       value: method,
       label: PAYMENT_LABELS[method],
     }));
-  }, [walletMethods]);
+  }, [availableMethods]);
   const hasMultipleWalletOptions = paymentOptions.length > 1;
 
   useEffect(() => {
@@ -71,6 +86,99 @@ export const PaymentScreen: React.FC = () => {
       setSelectedMethod(paymentOptions[0].value);
     }
   }, [paymentOptions, selectedMethod]);
+
+  const confirmPayment = useCallback(async (): Promise<void> => {
+    if (
+      !draft ||
+      !selectedMethod ||
+      !paymentId ||
+      confirmedBooking ||
+      confirmationInProgressRef.current
+    ) {
+      return;
+    }
+
+    confirmationInProgressRef.current = true;
+    setIsSubmitting(true);
+    setErrorMessage('Confirmation du paiement en cours…');
+
+    try {
+      for (let attempt = 0; attempt < PAYMENT_CONFIRMATION_ATTEMPTS; attempt += 1) {
+        try {
+          const booking = await finalizeDraft(draft.id, selectedMethod, paymentId);
+          setConfirmedBooking(booking);
+          setErrorMessage(null);
+          trackEvent(ANALYTICS_EVENTS.PAYMENT_COMPLETED, {
+            screen_name: 'Payment',
+            status: 'success',
+            code: selectedMethod,
+          });
+          return;
+        } catch (error) {
+          const errorCode = getErrorCode(error);
+          const canRetry =
+            errorCode === 'PAYMENT_PENDING' && attempt < PAYMENT_CONFIRMATION_ATTEMPTS - 1;
+
+          if (canRetry) {
+            await wait(PAYMENT_CONFIRMATION_DELAY_MS);
+            continue;
+          }
+
+          if (errorCode === 'PAYMENT_NOT_CONFIRMED') {
+            markDraftAsFailed(draft.id);
+          }
+
+          throw error;
+        }
+      }
+    } catch (error) {
+      setErrorMessage(
+        getErrorCode(error) === 'PAYMENT_PENDING'
+          ? 'Mollie confirme encore le paiement. Réessaie dans quelques secondes.'
+          : getErrorMessage(error, 'Erreur de confirmation du paiement')
+      );
+      trackEvent(ANALYTICS_EVENTS.PAYMENT_FAILED, {
+        screen_name: 'Payment',
+        status: 'error',
+        error_code: getErrorCode(error) ?? 'payment_confirmation_exception',
+      });
+    } finally {
+      confirmationInProgressRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [
+    confirmedBooking,
+    draft,
+    finalizeDraft,
+    markDraftAsFailed,
+    paymentId,
+    selectedMethod,
+  ]);
+
+  useEffect(() => {
+    const urlSubscription = Linking.addEventListener('url', ({ url }) => {
+      if (isMollieReturnUrl(url)) {
+        void confirmPayment();
+      }
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') {
+        checkoutWasBackgroundedRef.current = true;
+        return;
+      }
+
+      if (checkoutWasBackgroundedRef.current && paymentId) {
+        checkoutWasBackgroundedRef.current = false;
+        void confirmPayment();
+      }
+    });
+
+    return () => {
+      urlSubscription.remove();
+      appStateSubscription.remove();
+    };
+  }, [confirmPayment, paymentId]);
 
   const submitPayment = async (): Promise<void> => {
     if (!draft) {
@@ -101,21 +209,12 @@ export const PaymentScreen: React.FC = () => {
         });
         setPaymentId(payment.paymentId);
         await openMollieCheckout(payment.checkoutUrl!);
-        setErrorMessage('Après paiement, reviens ici puis valide la réservation.');
+        setErrorMessage('Termine le paiement dans Mollie. La confirmation sera automatique.');
         return;
       }
 
-      const booking = await finalizeDraft(draft.id, selectedMethod, paymentId);
-      setConfirmedBooking(booking);
-      trackEvent(ANALYTICS_EVENTS.PAYMENT_COMPLETED, {
-        screen_name: 'Payment',
-        status: 'success',
-        code: selectedMethod,
-      });
+      await confirmPayment();
     } catch (error) {
-      if (paymentId) {
-        markDraftAsFailed(draft.id);
-      }
       setErrorMessage(getErrorMessage(error, 'Erreur de paiement'));
       trackEvent(ANALYTICS_EVENTS.PAYMENT_FAILED, {
         screen_name: 'Payment',
@@ -192,7 +291,7 @@ export const PaymentScreen: React.FC = () => {
         Créneau: {formatDateTime(draft.slot)}
       </Text>
       <Text size="sm" color="secondary" style={styles.walletSubtitle}>
-        Paiement sécurisé via Mollie.
+        Paiement par carte sécurisé via Mollie.
       </Text>
 
       <Card style={styles.summary}>
@@ -210,7 +309,7 @@ export const PaymentScreen: React.FC = () => {
             Paiement indisponible
           </Text>
           <Text size="sm" color="secondary">
-            Apple Pay ou Google Pay n’est pas disponible sur cet appareil.
+            Aucun moyen de paiement n’est disponible sur cet appareil.
           </Text>
         </Card>
       ) : null}
@@ -235,8 +334,8 @@ export const PaymentScreen: React.FC = () => {
             Paiement Mollie ouvert
           </Text>
           <Text size="sm" color="secondary">
-            Termine le paiement dans la page Mollie. Si la confirmation automatique prend quelques
-            secondes, reviens ici puis valide la réservation.
+            Termine le paiement dans la page Mollie puis reviens dans l’application. La réservation
+            sera confirmée automatiquement.
           </Text>
         </Card>
       ) : null}
@@ -250,7 +349,7 @@ export const PaymentScreen: React.FC = () => {
       <Button
         title={
           paymentId
-            ? 'Valider mon paiement'
+            ? 'Vérifier le paiement'
             : selectedMethod
               ? `Payer avec ${PAYMENT_LABELS[selectedMethod]}`
               : 'Paiement indisponible'

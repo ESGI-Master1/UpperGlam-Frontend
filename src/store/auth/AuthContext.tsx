@@ -3,6 +3,11 @@ import { ANALYTICS_EVENTS, trackEvent, trackFormError, trackFormSubmit } from '@
 import { identifyPostHogUser, resetPostHogUser, setAnalyticsConsent } from '@/analytics/posthog';
 import { setAuthTokenProvider } from '@/api/client';
 import { getMeRequest } from '@/api/users';
+import {
+  clearAuthSession,
+  loadAuthSession,
+  saveAuthSession,
+} from '@/services/authSessionService';
 import { loginWithApi, registerWithApi } from '@/services/authService';
 import { AuthCredentials } from '@/types/auth';
 import { getErrorMessage } from '@/utils/errors';
@@ -17,6 +22,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isProvider: boolean;
   isProviderExperience: boolean;
+  isHydrating: boolean;
   isSubmitting: boolean;
   errorMessage: string | null;
   switchExperience: (experience: ActiveExperience) => void;
@@ -37,12 +43,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [activeExperience, setActiveExperience] = useState<ActiveExperience>('client');
+  const [isHydrating, setIsHydrating] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setAuthTokenProvider(() => token);
   }, [token]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async (): Promise<void> => {
+      try {
+        const session = await loadAuthSession();
+        if (!session || !isMounted) {
+          return;
+        }
+
+        const restoredExperience =
+          session.activeExperience === 'provider' && session.roles.includes('provider')
+            ? 'provider'
+            : 'client';
+
+        setAuthTokenProvider(() => session.token);
+        setToken(session.token);
+        setUserEmail(session.userEmail);
+        setUserRoles(session.roles);
+        setActiveExperience(restoredExperience);
+        identifyPostHogUser(session.userEmail, { email: session.userEmail });
+
+        try {
+          const profile = await getMeRequest();
+          if (isMounted) {
+            setAnalyticsConsent(profile.preferences?.analyticsEnabled === true);
+          }
+        } catch {
+          // A temporary API outage must not destroy a valid local session.
+        }
+      } finally {
+        if (isMounted) {
+          setIsHydrating(false);
+        }
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const clearError = useCallback(() => {
     setErrorMessage(null);
@@ -66,11 +117,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const authResult = await loginWithApi(credentials);
+      const nextExperience = authResult.roles.includes('provider') ? 'provider' : 'client';
+      await saveAuthSession({
+        token: authResult.token,
+        userEmail: authResult.userEmail,
+        roles: authResult.roles,
+        activeExperience: nextExperience,
+      });
       setToken(authResult.token);
       setAuthTokenProvider(() => authResult.token);
       setUserEmail(authResult.userEmail);
       setUserRoles(authResult.roles);
-      setActiveExperience(authResult.roles.includes('provider') ? 'provider' : 'client');
+      setActiveExperience(nextExperience);
       try {
         const profile = await getMeRequest();
         setAnalyticsConsent(profile.preferences?.analyticsEnabled === true);
@@ -107,11 +165,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const authResult = await registerWithApi(credentials);
+      const nextExperience = authResult.roles.includes('provider') ? 'provider' : 'client';
+      await saveAuthSession({
+        token: authResult.token,
+        userEmail: authResult.userEmail,
+        roles: authResult.roles,
+        activeExperience: nextExperience,
+      });
       setToken(authResult.token);
       setAuthTokenProvider(() => authResult.token);
       setUserEmail(authResult.userEmail);
       setUserRoles(authResult.roles);
-      setActiveExperience(authResult.roles.includes('provider') ? 'provider' : 'client');
+      setActiveExperience(nextExperience);
       try {
         const profile = await getMeRequest();
         setAnalyticsConsent(profile.preferences?.analyticsEnabled === true);
@@ -152,6 +217,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUserRoles([]);
     setActiveExperience('client');
     setErrorMessage(null);
+    setAuthTokenProvider(() => null);
+    void clearAuthSession();
     setAnalyticsConsent(false);
     resetPostHogUser();
   }, []);
@@ -165,6 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isAuthenticated: Boolean(token),
       isProvider: userRoles.includes('provider'),
       isProviderExperience: userRoles.includes('provider') && activeExperience === 'provider',
+      isHydrating,
       isSubmitting,
       errorMessage,
       switchExperience,
@@ -178,6 +246,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userEmail,
     userRoles,
     activeExperience,
+    isHydrating,
     isSubmitting,
     errorMessage,
     switchExperience,
