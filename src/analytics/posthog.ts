@@ -7,11 +7,22 @@ const hasPostHogConfig = env.posthogApiKey.trim().length > 0;
 export const isPostHogEnabled = isProductionBuild && hasPostHogConfig;
 
 let client: PostHog | null = null;
+let analyticsConsentGranted = false;
 type CaptureProperties = NonNullable<Parameters<PostHog['capture']>[1]>;
 type IdentifyProperties = NonNullable<Parameters<PostHog['identify']>[1]>;
 
+export const setAnalyticsConsent = (enabled: boolean): void => {
+  analyticsConsentGranted = enabled;
+
+  if (!enabled) {
+    resetPostHogUser();
+  }
+};
+
+export const isAnalyticsConsentGranted = (): boolean => analyticsConsentGranted;
+
 const getClient = (): PostHog | null => {
-  if (!isPostHogEnabled) {
+  if (!isPostHogEnabled || !analyticsConsentGranted) {
     return null;
   }
 

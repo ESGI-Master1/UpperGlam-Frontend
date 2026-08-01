@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ANALYTICS_EVENTS, trackScreenView } from '@/analytics';
@@ -7,13 +7,14 @@ import { BookingCard } from '@/components';
 import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
-import { EmptyState, Text } from '@/ui';
+import { EmptyState, Loader, Text } from '@/ui';
 
 type BookingsNavigation = StackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export const BookingsScreen: React.FC = () => {
   const navigation = useNavigation<BookingsNavigation>();
-  const { bookings, providerNameById, refreshBookings } = useBookings();
+  const { bookings, bookingsError, isLoadingBookings, providerNameById, refreshBookings } =
+    useBookings();
   const sortedBookings = useMemo(() => {
     return [...bookings].sort((a, b) => (a.slot > b.slot ? -1 : 1));
   }, [bookings]);
@@ -28,6 +29,21 @@ export const BookingsScreen: React.FC = () => {
     }, [refreshBookings])
   );
 
+  if (isLoadingBookings && sortedBookings.length === 0) {
+    return <Loader fullScreen text="Chargement de tes rendez-vous..." />;
+  }
+
+  if (bookingsError && sortedBookings.length === 0) {
+    return (
+      <EmptyState
+        title="Rendez-vous indisponibles"
+        description={bookingsError}
+        actionLabel="Réessayer"
+        onAction={() => void refreshBookings()}
+      />
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <Text variant="heading" size="xl" weight="bold" style={styles.title}>
@@ -37,6 +53,9 @@ export const BookingsScreen: React.FC = () => {
         data={sortedBookings}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={isLoadingBookings} onRefresh={() => void refreshBookings()} />
+        }
         renderItem={({ item }) => (
           <BookingCard
             booking={item}

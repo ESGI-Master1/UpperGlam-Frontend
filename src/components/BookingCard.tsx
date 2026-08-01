@@ -13,6 +13,12 @@ interface BookingCardProps {
 
 export const BookingCard: React.FC<BookingCardProps> = ({ booking, providerName, onPress }) => {
   const isHome = booking.appointmentMode === 'home';
+  const statusLabel = booking.status === 'cancelled' ? 'Annulé' : 'Confirmé';
+  const paymentLabel = booking.paymentStatus
+    ? `Paiement ${booking.paymentStatus}`
+    : booking.transactionId
+      ? 'Paiement confirmé'
+      : 'Paiement enregistré';
 
   return (
     <Card style={styles.card} onPress={onPress}>
@@ -45,6 +51,23 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, providerName,
       <Text size="sm" color="accent" style={styles.detail}>
         {formatPrice(booking.amount)}
       </Text>
+      <View style={styles.badgeRow}>
+        <View style={styles.badge}>
+          <Text size="xs" color="secondary">
+            {statusLabel}
+          </Text>
+        </View>
+        <View style={styles.badge}>
+          <Text size="xs" color="secondary">
+            {paymentLabel}
+          </Text>
+        </View>
+      </View>
+      {booking.refundTransactionId ? (
+        <Text size="xs" color="secondary" style={styles.detail}>
+          Remboursement: {booking.refundTransactionId}
+        </Text>
+      ) : null}
       <Text size="xs" color="secondary" style={styles.detail}>
         Confirmation: {booking.confirmationCode}
       </Text>
@@ -70,5 +93,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  badgeRow: {
+    marginTop: theme.spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  badge: {
+    borderRadius: 999,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
   },
 });

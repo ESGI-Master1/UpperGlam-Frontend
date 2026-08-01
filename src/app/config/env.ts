@@ -21,4 +21,5 @@ export const env = {
     process.env.EXPO_PUBLIC_POSTHOG_HOST ??
     process.env.VITE_PUBLIC_POSTHOG_HOST ??
     'https://app.posthog.com',
+  mollieReturnUrl: process.env.EXPO_PUBLIC_MOLLIE_RETURN_URL ?? 'upperglam://payment-return',
 } as const;

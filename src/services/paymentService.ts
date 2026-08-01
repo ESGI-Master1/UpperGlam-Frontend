@@ -1,67 +1,43 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { createPaymentIntentRequest } from '@/api/payments';
-import { PaymentIntentInput, PaymentMethod, PaymentResult } from '@/types/payment';
+import { PaymentIntentInput, PaymentMethod } from '@/types/payment';
 
-const toApiId = (value: string): number | string => {
+export const toPaymentApiId = (value: string): number | string => {
   const numericId = Number(value);
   return Number.isInteger(numericId) ? numericId : value;
 };
 
-export const getAvailableWalletMethods = (): PaymentMethod[] => {
+export const getAvailablePaymentMethods = (): PaymentMethod[] => {
   if (Platform.OS === 'ios') {
-    return ['apple_pay'];
+    return ['card', 'apple_pay'];
   }
 
   if (Platform.OS === 'android') {
-    return ['google_pay'];
+    return ['card', 'google_pay'];
   }
 
-  return [];
+  return ['card'];
 };
 
-export const isWalletPaymentSupported = (): boolean => {
-  return getAvailableWalletMethods().length > 0;
-};
-
-export const createPlatformPayToken = (method: PaymentMethod): string => {
-  return `tok_${method}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-};
-
-export const processPayment = async (input: PaymentIntentInput): Promise<PaymentResult> => {
-  const availableMethods = getAvailableWalletMethods();
-  if (availableMethods.length === 0) {
-    return {
-      status: 'failed',
-      transactionId: 'txn_wallet_not_supported',
-      errorCode: 'wallet_not_supported',
-    };
-  }
-
-  if (!availableMethods.includes(input.method)) {
-    return {
-      status: 'failed',
-      transactionId: 'txn_wallet_method_mismatch',
-      errorCode: 'wallet_method_mismatch',
-    };
-  }
-
-  const paymentResult = await createPaymentIntentRequest({
-    draftId: toApiId(input.draftId),
+export const createMollieCheckout = async (input: PaymentIntentInput) => {
+  const payment = await createPaymentIntentRequest({
+    draftId: toPaymentApiId(input.draftId),
     method: input.method,
-    platformPayToken: input.platformPayToken,
+    idempotencyKey: input.idempotencyKey,
   });
 
-  if (paymentResult.status !== 'succeeded') {
-    return {
-      status: 'failed',
-      transactionId: paymentResult.transactionId,
-      errorCode: 'payment_failed',
-    };
+  if (!payment.checkoutUrl) {
+    throw new Error('URL de paiement Mollie manquante');
   }
 
-  return {
-    status: 'succeeded',
-    transactionId: paymentResult.transactionId,
-    providerReference: paymentResult.providerReference,
-  };
+  return payment;
+};
+
+export const openMollieCheckout = async (checkoutUrl: string): Promise<void> => {
+  const canOpen = await Linking.canOpenURL(checkoutUrl);
+  if (!canOpen) {
+    throw new Error('Impossible d’ouvrir la page de paiement Mollie');
+  }
+
+  await Linking.openURL(checkoutUrl);
 };

@@ -10,6 +10,7 @@ export interface AuthPayloadDTO extends AuthCredentials {
 export interface AuthResult {
   token: string;
   userEmail: string;
+  roles: string[];
 }
 
 export interface ForgotPasswordPayloadDTO {

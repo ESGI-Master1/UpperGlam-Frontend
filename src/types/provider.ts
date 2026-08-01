@@ -30,6 +30,7 @@ export interface Provider {
   priceFrom: number;
   currency: string;
   serviceModes: AppointmentMode[];
+  homeServiceZones: string[];
   instituteAddress?: string;
   tags: ProviderTag[];
   nextSlots: string[];

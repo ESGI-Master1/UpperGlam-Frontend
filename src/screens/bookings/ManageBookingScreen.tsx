@@ -7,8 +7,9 @@ import { useBookings } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
 import { AppointmentMode, Provider } from '@/types/provider';
-import { Button, Card, Icon, Input, KeyboardScreen, Loader, Text } from '@/ui';
+import { Button, Card, EmptyState, Icon, Input, KeyboardScreen, Loader, Text } from '@/ui';
 import { formatPrice } from '@/utils/format';
+import { getErrorMessage } from '@/utils/errors';
 
 interface DaySlotGroup {
   dayKey: string;
@@ -48,10 +49,14 @@ export const ManageBookingScreen: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<AppointmentMode>('home');
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
+  const [isLoadingProvider, setIsLoadingProvider] = useState(true);
+  const [providerError, setProviderError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadProvider = async (): Promise<void> => {
+  const loadProvider = async (): Promise<void> => {
+    setIsLoadingProvider(true);
+    setProviderError(null);
+    try {
       if (!booking) {
         return;
       }
@@ -74,8 +79,14 @@ export const ManageBookingScreen: React.FC = () => {
       } catch {
         setProviderSlots(result.nextSlots);
       }
-    };
+    } catch (loadError) {
+      setProviderError(getErrorMessage(loadError, 'Impossible de charger le prestataire.'));
+    } finally {
+      setIsLoadingProvider(false);
+    }
+  };
 
+  useEffect(() => {
     void loadProvider();
   }, [booking]);
 
@@ -131,15 +142,19 @@ export const ManageBookingScreen: React.FC = () => {
       return;
     }
 
-    setError(null);
-    await updateBooking({
-      bookingId: booking.id,
-      slot: selectedSlot,
-      appointmentMode: selectedMode,
-      address: selectedMode === 'home' ? address.trim() : undefined,
-      note: note.trim() || undefined,
-    });
-    navigation.goBack();
+    try {
+      setError(null);
+      await updateBooking({
+        bookingId: booking.id,
+        slot: selectedSlot,
+        appointmentMode: selectedMode,
+        address: selectedMode === 'home' ? address.trim() : undefined,
+        note: note.trim() || undefined,
+      });
+      navigation.goBack();
+    } catch (updateError) {
+      setError(getErrorMessage(updateError, 'Impossible de modifier ce rendez-vous.'));
+    }
   };
 
   const requestCancel = (): void => {
@@ -156,7 +171,19 @@ export const ManageBookingScreen: React.FC = () => {
           text: 'Annuler le rendez-vous',
           style: 'destructive',
           onPress: () => {
-            void cancelBooking(booking.id).then(() => navigation.goBack());
+            void cancelBooking(booking.id)
+              .then((result) => {
+                Alert.alert(
+                  'Rendez-vous annulé',
+                  result.refundTransactionId
+                    ? 'Le remboursement a été demandé automatiquement.'
+                    : 'Annulation prise en compte. Cette annulation n’est pas éligible à un remboursement automatique.'
+                );
+                navigation.goBack();
+              })
+              .catch((cancelError) => {
+                setError(getErrorMessage(cancelError, 'Impossible d’annuler ce rendez-vous.'));
+              });
           },
         },
       ],
@@ -174,8 +201,19 @@ export const ManageBookingScreen: React.FC = () => {
     );
   }
 
-  if (!provider) {
+  if (isLoadingProvider) {
     return <Loader fullScreen text="Chargement du rendez-vous..." />;
+  }
+
+  if (providerError || !provider) {
+    return (
+      <EmptyState
+        title="Rendez-vous indisponible"
+        description={providerError ?? 'Prestataire introuvable.'}
+        actionLabel="Réessayer"
+        onAction={() => void loadProvider()}
+      />
+    );
   }
 
   return (
@@ -237,29 +275,35 @@ export const ManageBookingScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dayList}
         >
-          {groupedSlots.map((day) => {
-            const isSelected = day.dayKey === selectedDayKey;
-            return (
-              <Pressable
-                key={day.dayKey}
-                onPress={() => {
-                  setSelectedDayKey(day.dayKey);
-                  setSelectedSlot(day.slots[0]);
-                }}
-                style={[
-                  styles.dayPill,
-                  isSelected ? styles.dayPillSelected : styles.dayPillDefault,
-                ]}
-              >
-                <Text size="xs" color={isSelected ? 'primary' : 'secondary'}>
-                  {day.dayLabel}
-                </Text>
-                <Text size="sm" weight="semibold" color={isSelected ? 'primary' : 'secondary'}>
-                  {day.dateLabel}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {groupedSlots.length > 0 ? (
+            groupedSlots.map((day) => {
+              const isSelected = day.dayKey === selectedDayKey;
+              return (
+                <Pressable
+                  key={day.dayKey}
+                  onPress={() => {
+                    setSelectedDayKey(day.dayKey);
+                    setSelectedSlot(day.slots[0]);
+                  }}
+                  style={[
+                    styles.dayPill,
+                    isSelected ? styles.dayPillSelected : styles.dayPillDefault,
+                  ]}
+                >
+                  <Text size="xs" color={isSelected ? 'primary' : 'secondary'}>
+                    {day.dayLabel}
+                  </Text>
+                  <Text size="sm" weight="semibold" color={isSelected ? 'primary' : 'secondary'}>
+                    {day.dateLabel}
+                  </Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <Text size="sm" color="secondary">
+              Aucun créneau disponible pour modifier ce rendez-vous.
+            </Text>
+          )}
         </ScrollView>
       </View>
 

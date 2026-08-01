@@ -169,11 +169,18 @@ export const ProviderDetailsScreen: React.FC = () => {
           </Text>
           <View style={styles.modeList}>
             {canHome ? (
-              <View style={styles.modePill}>
-                <Icon name="home-map-marker" size={14} color={theme.colors.accentChampagne} />
-                <Text size="sm" color="secondary">
-                  Le prestataire se déplace à domicile
-                </Text>
+              <View style={styles.modeBlock}>
+                <View style={styles.modePill}>
+                  <Icon name="home-map-marker" size={14} color={theme.colors.accentChampagne} />
+                  <Text size="sm" color="secondary">
+                    Le prestataire se déplace à domicile
+                  </Text>
+                </View>
+                {provider.homeServiceZones.length > 0 ? (
+                  <Text size="xs" color="secondary" style={styles.zoneText}>
+                    Zones: {provider.homeServiceZones.join(', ')}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
             {canInstitute ? (
@@ -355,6 +362,9 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     gap: theme.spacing.sm,
   },
+  modeBlock: {
+    gap: theme.spacing.xs,
+  },
   modePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,6 +373,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
+  },
+  zoneText: {
+    paddingHorizontal: theme.spacing.sm,
+    lineHeight: 18,
   },
   instituteAddress: {
     marginTop: theme.spacing.sm,

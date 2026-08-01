@@ -20,6 +20,7 @@ export interface ProviderDto {
   priceFromCents: number;
   currency: string;
   serviceModes: string[];
+  homeServiceZones?: string[];
   instituteAddress?: string | null;
   tags: string[];
   nextSlots: string[];

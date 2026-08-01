@@ -1,5 +1,6 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@theme';
 
 interface KeyboardScreenProps {
@@ -8,6 +9,8 @@ interface KeyboardScreenProps {
 }
 
 export const KeyboardScreen: React.FC<KeyboardScreenProps> = ({ children, contentStyle }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -16,7 +19,11 @@ export const KeyboardScreen: React.FC<KeyboardScreenProps> = ({ children, conten
     >
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, contentStyle]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: theme.spacing.xxl + insets.bottom },
+          contentStyle,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {children}

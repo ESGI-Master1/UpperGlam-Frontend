@@ -1,7 +1,7 @@
 import { AnalyticsEvent } from './events';
 import { env } from '@/app/config/env';
 import { getAnalyticsContext } from './context';
-import { capturePostHogEvent, isPostHogEnabled } from './posthog';
+import { capturePostHogEvent, isAnalyticsConsentGranted, isPostHogEnabled } from './posthog';
 import { EventPayload } from './types';
 
 export const trackEvent = (eventName: AnalyticsEvent, payload: EventPayload = {}): void => {
@@ -15,7 +15,7 @@ export const trackEvent = (eventName: AnalyticsEvent, payload: EventPayload = {}
   };
 
   try {
-    if (isPostHogEnabled) {
+    if (isPostHogEnabled && isAnalyticsConsentGranted()) {
       capturePostHogEvent(eventName, eventPayload);
     }
 

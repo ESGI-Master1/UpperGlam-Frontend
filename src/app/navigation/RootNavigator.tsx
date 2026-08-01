@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { MainTabNavigator } from './MainTabNavigator';
+import { ProviderTabNavigator } from './ProviderTabNavigator';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { WelcomeScreen } from '@/screens/auth/WelcomeScreen';
 import { ForgotPasswordScreen } from '@/screens/auth/ForgotPasswordScreen';
@@ -13,19 +14,25 @@ import { ProviderReviewsScreen } from '@/screens/search/ProviderReviewsScreen';
 import { useAuth } from '@/store';
 import { theme } from '@/theme';
 import { RootStackParamList } from '@/types/navigation';
+import { Loader } from '@/ui';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isProviderExperience, isHydrating } = useAuth();
+
+  if (isHydrating) {
+    return <Loader fullScreen text="Restauration de la session..." />;
+  }
 
   return (
     <Stack.Navigator
-      key={isAuthenticated ? 'app' : 'auth'}
+      key={isAuthenticated ? `app-${isProviderExperience ? 'provider' : 'client'}` : 'auth'}
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.background,
         },
+        headerShadowVisible: false,
         headerTintColor: theme.colors.primaryText,
         cardStyle: {
           backgroundColor: theme.colors.background,
@@ -49,7 +56,19 @@ export const RootNavigator: React.FC = () => {
         </>
       ) : (
         <>
-          <Stack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
+          {isProviderExperience ? (
+            <Stack.Screen
+              name="ProviderTabs"
+              component={ProviderTabNavigator}
+              options={{ headerShown: false }}
+            />
+          ) : (
+            <Stack.Screen
+              name="Tabs"
+              component={MainTabNavigator}
+              options={{ headerShown: false }}
+            />
+          )}
           <Stack.Screen
             name="ProviderDetails"
             component={ProviderDetailsScreen}

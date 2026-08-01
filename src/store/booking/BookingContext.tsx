@@ -13,10 +13,12 @@ import { getProviderById } from '@/services/providerService';
 import {
   Booking,
   BookingDraft,
+  CancelBookingResult,
   CreateBookingDraftInput,
   UpdateBookingInput,
 } from '@/types/booking';
 import { PaymentMethod } from '@/types/payment';
+import { getErrorMessage } from '@/utils/errors';
 import { useAuth } from '../auth/AuthContext';
 
 interface BookingContextValue {
@@ -25,6 +27,7 @@ interface BookingContextValue {
   providerNameById: Record<string, string>;
   isSubmitting: boolean;
   isLoadingBookings: boolean;
+  bookingsError: string | null;
   createDraft: (input: CreateBookingDraftInput) => Promise<BookingDraft>;
   getDraftById: (draftId: string) => BookingDraft | undefined;
   getBookingById: (bookingId: string) => Booking | undefined;
@@ -32,10 +35,10 @@ interface BookingContextValue {
   finalizeDraft: (
     draftId: string,
     paymentMethod: PaymentMethod,
-    platformPayToken: string
+    paymentId: string
   ) => Promise<Booking>;
   updateBooking: (input: UpdateBookingInput) => Promise<Booking>;
-  cancelBooking: (bookingId: string) => Promise<void>;
+  cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   refreshBookings: () => Promise<void>;
 }
 
@@ -52,6 +55,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
   const [providerNameById, setProviderNameById] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
 
   const resolveProviderNames = useCallback(async (providerIds: string[]): Promise<void> => {
     const uniqueIds = Array.from(new Set(providerIds));
@@ -80,12 +84,13 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     }
 
     setIsLoadingBookings(true);
+    setBookingsError(null);
     try {
       const currentBookings = await getMyBookings();
       setBookings(currentBookings);
       await resolveProviderNames(currentBookings.map((booking) => booking.providerId));
-    } catch {
-      setBookings([]);
+    } catch (error) {
+      setBookingsError(getErrorMessage(error, 'Impossible de charger tes rendez-vous.'));
     } finally {
       setIsLoadingBookings(false);
     }
@@ -148,18 +153,14 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
   );
 
   const finalizeDraft = useCallback(
-    async (
-      draftId: string,
-      paymentMethod: PaymentMethod,
-      platformPayToken: string
-    ): Promise<Booking> => {
+    async (draftId: string, paymentMethod: PaymentMethod, paymentId: string): Promise<Booking> => {
       setIsSubmitting(true);
       try {
         const draft =
           drafts.find((item) => item.id === draftId) ?? (await getBookingDraftById(draftId));
         const booking = await checkoutBookingDraft(draft.id, {
           method: paymentMethod,
-          platformPayToken,
+          paymentId,
         });
 
         setBookings((current) => [booking, ...current.filter((item) => item.id !== booking.id)]);
@@ -215,15 +216,16 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     [resolveProviderNames]
   );
 
-  const cancelBooking = useCallback(async (bookingId: string): Promise<void> => {
+  const cancelBooking = useCallback(async (bookingId: string): Promise<CancelBookingResult> => {
     setIsSubmitting(true);
     try {
-      await cancelBookingRequest(bookingId);
+      const result = await cancelBookingRequest(bookingId);
       setBookings((current) => current.filter((booking) => booking.id !== bookingId));
       trackEvent(ANALYTICS_EVENTS.BOOKING_CANCELLED, {
         screen_name: 'ManageBooking',
         status: 'success',
       });
+      return result;
     } finally {
       setIsSubmitting(false);
     }
@@ -236,6 +238,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
       providerNameById,
       isSubmitting,
       isLoadingBookings,
+      bookingsError,
       createDraft,
       getDraftById,
       getBookingById,
@@ -251,6 +254,7 @@ export const BookingProvider: React.FC<BookingProviderProps> = ({ children }) =>
     providerNameById,
     isSubmitting,
     isLoadingBookings,
+    bookingsError,
     createDraft,
     getDraftById,
     getBookingById,

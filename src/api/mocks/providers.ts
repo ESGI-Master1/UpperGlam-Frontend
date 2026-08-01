@@ -22,6 +22,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     priceFrom: 65,
     currency: 'EUR',
     serviceModes: ['home', 'institute'],
+    homeServiceZones: ['Paris 10e', 'Paris 11e', 'Paris 12e'],
     instituteAddress: '48 rue Oberkampf, 75011 Paris',
     tags: ['hair', 'makeup'],
     nextSlots: [
@@ -62,6 +63,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     priceFrom: 70,
     currency: 'EUR',
     serviceModes: ['institute'],
+    homeServiceZones: [],
     instituteAddress: '22 rue de Vaugirard, 75015 Paris',
     tags: ['makeup', 'skincare'],
     nextSlots: [
@@ -102,6 +104,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     priceFrom: 40,
     currency: 'EUR',
     serviceModes: ['home'],
+    homeServiceZones: ['Boulogne', 'Issy-les-Moulineaux', 'Paris 16e'],
     tags: ['barber', 'hair'],
     nextSlots: [
       makeIsoSlot(0, 17),
@@ -141,6 +144,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     priceFrom: 55,
     currency: 'EUR',
     serviceModes: ['home', 'institute'],
+    homeServiceZones: ['Paris 3e', 'Paris 4e', 'Paris 11e'],
     instituteAddress: '9 rue de Turenne, 75003 Paris',
     tags: ['nails'],
     nextSlots: [
@@ -181,6 +185,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     priceFrom: 75,
     currency: 'EUR',
     serviceModes: ['institute'],
+    homeServiceZones: [],
     instituteAddress: '11 avenue Charles-de-Gaulle, 92200 Neuilly',
     tags: ['skincare'],
     nextSlots: [

@@ -1,5 +1,7 @@
 # Upper Glam Mobile App
 
+[![CI](https://github.com/ESGI-Master1/UpperGlam-Frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/ESGI-Master1/UpperGlam-Frontend/actions/workflows/ci.yml)
+
 React Native mobile application for Upper Glam, built with Expo and TypeScript.
 
 ## Tech Stack
@@ -73,6 +75,8 @@ Copy `.env.example` to `.env` and configure:
 cp .env.example .env
 ```
 
+Pour Android Emulator, utiliser `EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3333`. Pour un appareil physique, utiliser l'IP LAN de la machine qui execute l'API. La matrice local/preview/production est documentee dans le guide infrastructure du backend.
+
 ### Run on Android (without Expo Go)
 
 ```bash
@@ -82,7 +86,14 @@ npm run android:check
 # Build + install native app on emulator (no Expo Go)
 npm run android
 
-# Next launches (after app is already installed)
+# Telephone physique deja equipe de l'app : verifie ADB, configure l'USB,
+# demarre Metro sur le LAN et ouvre automatiquement Upper Glam
+npm run android:device
+
+# Reinstaller l'APK debug local deja compile, sans relancer Gradle
+npm run android:install-apk
+
+# Metro seul (emulateur ou lancement manuel du development client)
 npm run android:dev-client
 
 # Run on iOS
@@ -98,6 +109,9 @@ npm run web
 # One-time login
 npx eas-cli login
 
+# One-time project link, required before non-interactive cloud builds
+npx eas-cli init
+
 # Build installable APK (internal distribution)
 npm run android:apk
 ```
@@ -105,6 +119,32 @@ npm run android:apk
 At the end of the build, EAS provides a download URL for the `.apk` that you can send directly to testers.
 
 If `java` or `adb` is not detected right after installing Android/JDK tools on Windows, close and reopen your terminal once.
+
+## Demo Procedure
+
+### Client flow
+
+1. Log in with a client account.
+2. Search for a provider from the `Search` tab, then open the provider details page.
+3. Start a booking, select appointment mode, date, slot, address if home service, and optional note.
+4. Continue to payment, open the Mollie checkout, then return to the app and validate the payment.
+5. Open `Bookings` and verify the booking status, payment status, confirmation code, amount, address, and refund information if present.
+6. Open the booking detail screen, test a valid modification, then test cancellation.
+
+### Provider flow
+
+1. Log in with a provider account and switch to the provider experience.
+2. Check `Activity`, `Agenda`, `Ops`, and `Profile pro`.
+3. In `Agenda`, accept/reject/propose a slot for a booking and update recurring availability or closures.
+4. In `Profile pro`, update profile details, service zones, services catalog, and gallery.
+5. In `Ops`, verify clients, internal notes, revenue, payouts, transactions, and CSV exports.
+
+### Edge cases to test
+
+- Network disabled during provider search, booking creation, payment validation, booking update, and cancellation.
+- Payment refused or abandoned in Mollie, then retry from the payment screen.
+- Slot already taken or draft expired before payment validation.
+- Small Android screen and standard Android screen.
 
 ## Development
 
@@ -126,7 +166,7 @@ npm run type-check
 
 ### CI & Branch Protection
 
-- `CI` (`.github/workflows/ci.yml`): lint + type-check + prettier check
+- `CI` (`.github/workflows/ci.yml`): lint + type-check + tests + prettier check
 - `PR Conventions` (`.github/workflows/pr-conventions.yml`): semantic PR title + branch/commit naming conventions
 - `Dependency Audit` (`.github/workflows/dependency-audit.yml`): `npm audit` sur deps de prod (PR lockfile + weekly)
 

@@ -1,14 +1,22 @@
-export type PaymentMethod = 'apple_pay' | 'google_pay';
+export type PaymentMethod = 'card' | 'apple_pay' | 'google_pay';
+export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
 
 export interface PaymentIntentInput {
   draftId: string;
   method: PaymentMethod;
-  platformPayToken: string;
+  idempotencyKey: string;
 }
 
 export interface PaymentResult {
-  status: 'succeeded' | 'failed';
+  status: PaymentStatus;
   transactionId: string;
+  paymentIntentId?: string;
   providerReference?: string;
-  errorCode?: 'wallet_not_supported' | 'wallet_method_mismatch' | 'payment_failed';
+  clientSecret?: string;
+  errorCode?:
+    | 'stripe_not_configured'
+    | 'wallet_not_supported'
+    | 'wallet_method_mismatch'
+    | 'payment_cancelled'
+    | 'payment_failed';
 }
