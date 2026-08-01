@@ -32,6 +32,7 @@ export const RootNavigator: React.FC = () => {
         headerStyle: {
           backgroundColor: theme.colors.background,
         },
+        headerShadowVisible: false,
         headerTintColor: theme.colors.primaryText,
         cardStyle: {
           backgroundColor: theme.colors.background,

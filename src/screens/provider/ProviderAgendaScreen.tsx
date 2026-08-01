@@ -31,11 +31,7 @@ import {
 } from '@/types/providerDashboard';
 import { formatDateTime, formatPrice } from '@/utils/format';
 import { Button, Card, EmptyState, Loader, Text } from '@/ui';
-import {
-  ProviderCalendar,
-  startOfLocalMonth,
-  toLocalDateKey,
-} from './components/ProviderCalendar';
+import { ProviderCalendar, startOfLocalMonth, toLocalDateKey } from './components/ProviderCalendar';
 import { SlotComposerModal } from './components/SlotComposerModal';
 
 type AgendaItem =
@@ -164,10 +160,7 @@ export const ProviderAgendaScreen: React.FC = () => {
     void loadAgenda();
   };
 
-  const createSlots = async (
-    startTimes: string[],
-    durationMinutes: number
-  ): Promise<void> => {
+  const createSlots = async (startTimes: string[], durationMinutes: number): Promise<void> => {
     setIsCreating(true);
     let createdCount = 0;
 
@@ -424,11 +417,7 @@ export const ProviderAgendaScreen: React.FC = () => {
                     : `${selectedItems.length} élément${selectedItems.length > 1 ? 's' : ''} dans la journée`}
                 </Text>
               </View>
-              <Button
-                title="+ Créneau"
-                size="sm"
-                onPress={() => setIsSlotComposerOpen(true)}
-              />
+              <Button title="+ Créneau" size="sm" onPress={() => setIsSlotComposerOpen(true)} />
             </View>
 
             {selectedItems.length === 0 ? (

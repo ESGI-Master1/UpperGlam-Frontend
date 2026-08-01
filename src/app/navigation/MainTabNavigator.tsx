@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '@/screens/home/HomeScreen';
 import { BookingsScreen } from '@/screens/bookings/BookingsScreen';
 import { ProfileScreen } from '@/screens/profile/ProfileScreen';
@@ -11,16 +12,26 @@ import { Icon } from '@/ui';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator: React.FC = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background,
         },
+        headerShadowVisible: false,
         headerTintColor: theme.colors.primaryText,
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.background,
+          borderTopColor: theme.colors.hairline,
+          height: 62 + insets.bottom,
+          paddingTop: 7,
+          paddingBottom: Math.max(insets.bottom, 8),
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
         },
         tabBarActiveTintColor: theme.colors.accentChampagne,
         tabBarInactiveTintColor: theme.colors.secondaryText,

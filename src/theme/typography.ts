@@ -1,7 +1,7 @@
 export const typography = {
   fontFamily: {
-    heading: 'PlayfairDisplay',
-    body: 'Inter',
+    heading: 'serif',
+    body: 'sans-serif',
   },
   fontSize: {
     xs: 12,
@@ -9,7 +9,7 @@ export const typography = {
     md: 16,
     lg: 20,
     xl: 24,
-    xxl: 32,
+    xxl: 36,
   },
   fontWeight: {
     regular: '400' as const,

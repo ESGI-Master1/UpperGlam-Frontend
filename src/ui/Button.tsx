@@ -63,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 8,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -73,6 +73,8 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
   },
   outline: {
     backgroundColor: 'transparent',
@@ -88,9 +90,9 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   md: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.md + 2,
     paddingHorizontal: theme.spacing.xl,
-    minHeight: 48,
+    minHeight: 52,
   },
   lg: {
     paddingVertical: theme.spacing.lg,

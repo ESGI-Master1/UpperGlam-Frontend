@@ -13,7 +13,7 @@ type CardProps = CardBaseProps & Omit<ViewProps, keyof CardBaseProps>;
 
 export const Card: React.FC<CardProps> = ({
   padding = 'lg',
-  elevation = true,
+  elevation = false,
   onPress,
   style,
   children,
@@ -46,7 +46,9 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   base: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.hairline,
   },
   elevation: {
     shadowColor: '#000',
@@ -54,8 +56,8 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 3,
   },
 });

@@ -50,14 +50,14 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'transparent',
-    borderRadius: 8,
+    borderColor: theme.colors.hairline,
+    borderRadius: 14,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     fontSize: theme.typography.fontSize.md,
     color: theme.colors.primaryText,
     fontFamily: theme.typography.fontFamily.body,
-    minHeight: 48,
+    minHeight: 52,
   },
   inputFocused: {
     borderColor: theme.colors.accentChampagne,

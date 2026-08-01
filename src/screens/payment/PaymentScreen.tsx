@@ -146,14 +146,7 @@ export const PaymentScreen: React.FC = () => {
       confirmationInProgressRef.current = false;
       setIsSubmitting(false);
     }
-  }, [
-    confirmedBooking,
-    draft,
-    finalizeDraft,
-    markDraftAsFailed,
-    paymentId,
-    selectedMethod,
-  ]);
+  }, [confirmedBooking, draft, finalizeDraft, markDraftAsFailed, paymentId, selectedMethod]);
 
   useEffect(() => {
     const urlSubscription = Linking.addEventListener('url', ({ url }) => {

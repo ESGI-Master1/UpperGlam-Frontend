@@ -3,11 +3,7 @@ import { ANALYTICS_EVENTS, trackEvent, trackFormError, trackFormSubmit } from '@
 import { identifyPostHogUser, resetPostHogUser, setAnalyticsConsent } from '@/analytics/posthog';
 import { setAuthTokenProvider } from '@/api/client';
 import { getMeRequest } from '@/api/users';
-import {
-  clearAuthSession,
-  loadAuthSession,
-  saveAuthSession,
-} from '@/services/authSessionService';
+import { clearAuthSession, loadAuthSession, saveAuthSession } from '@/services/authSessionService';
 import { loginWithApi, registerWithApi } from '@/services/authService';
 import { AuthCredentials } from '@/types/auth';
 import { getErrorMessage } from '@/utils/errors';
